@@ -5,9 +5,17 @@ import DailyTracker from "./components/DailyTracker";
 import WorkoutPlanner from "./components/WorkoutPlanner";
 import ProgressCharts from "./components/ProgressCharts";
 import Account from "./components/Account";
-import { Dumbbell, Home, Calendar, TrendingUp, User } from "lucide-react";
+import ExerciseLibrary from "./components/ExerciseLibrary";
+import {
+  Dumbbell,
+  Home,
+  Calendar,
+  TrendingUp,
+  User,
+  Library,
+} from "lucide-react";
 
-type Tab = "dashboard" | "planner" | "progress" | "account";
+type Tab = "dashboard" | "planner" | "progress" | "exercises" | "account";
 
 function MainApp() {
   const { user } = useAuth();
@@ -76,6 +84,18 @@ function MainApp() {
               </button>
 
               <button
+                onClick={() => setActiveTab("exercises")}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition ${
+                  activeTab === "exercises"
+                    ? "bg-blue-500 text-white"
+                    : "text-slate-400 hover:text-white hover:bg-slate-700"
+                }`}
+              >
+                <Library className="w-4 h-4" />
+                <span>Exercises</span>
+              </button>
+
+              <button
                 onClick={() => setActiveTab("account")}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition ${
                   activeTab === "account"
@@ -96,12 +116,13 @@ function MainApp() {
         {activeTab === "dashboard" && <DailyTracker />}
         {activeTab === "planner" && <WorkoutPlanner />}
         {activeTab === "progress" && <ProgressCharts />}
+        {activeTab === "exercises" && <ExerciseLibrary />}
         {activeTab === "account" && <Account />}
       </main>
 
       {/* Bottom Navigation - Mobile */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-slate-800/95 backdrop-blur-sm border-t border-slate-700 z-50">
-        <div className="grid grid-cols-4 gap-1 px-2 py-3">
+        <div className="grid grid-cols-5 gap-1 px-2 py-3">
           <button
             onClick={() => setActiveTab("dashboard")}
             className={`flex flex-col items-center justify-center gap-1 py-2 rounded-lg font-medium transition ${
@@ -148,6 +169,22 @@ function MainApp() {
               }`}
             />
             <span className="text-xs">Progress</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("exercises")}
+            className={`flex flex-col items-center justify-center gap-1 py-2 rounded-lg font-medium transition ${
+              activeTab === "exercises"
+                ? "text-blue-400"
+                : "text-slate-400 active:bg-slate-700"
+            }`}
+          >
+            <Library
+              className={`w-6 h-6 ${
+                activeTab === "exercises" ? "text-blue-400" : ""
+              }`}
+            />
+            <span className="text-xs">Exercises</span>
           </button>
 
           <button
