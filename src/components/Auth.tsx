@@ -59,7 +59,7 @@ export default function Auth() {
             <div className="bg-gradient-to-br from-blue-500 to-cyan-500 p-4 rounded-2xl mb-4">
               <Dumbbell className="w-10 h-10 text-white" />
             </div>
-            <h1 className="text-3xl font-bold text-white mb-2">GymTracker</h1>
+            <h1 className="text-3xl font-bold text-white mb-2">WellPlan</h1>
             <p className="text-slate-400 text-center">
               Track your fitness journey
             </p>
