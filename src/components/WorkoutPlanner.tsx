@@ -412,6 +412,14 @@ export default function WorkoutPlanner() {
                         key={i}
                         className="bg-slate-900 p-3 rounded-lg space-y-2"
                       >
+                        {exercise.exercise_library_id && (
+                          <div className="flex items-center gap-1 mt-1">
+                            <div className="w-1.5 h-1.5 bg-green-400 rounded-full"></div>
+                            <span className="text-xs text-green-400">
+                              From library
+                            </span>
+                          </div>
+                        )}
                         <div className="grid grid-cols-12 gap-2 items-center">
                           <div className="col-span-6">
                             <ExerciseAutocomplete
@@ -421,14 +429,6 @@ export default function WorkoutPlanner() {
                               }
                               placeholder="Exercise name"
                             />
-                            {exercise.exercise_library_id && (
-                              <div className="flex items-center gap-1 mt-1">
-                                <div className="w-1.5 h-1.5 bg-green-400 rounded-full"></div>
-                                <span className="text-xs text-green-400">
-                                  From library
-                                </span>
-                              </div>
-                            )}
                           </div>
                           <input
                             type="number"
