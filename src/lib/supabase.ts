@@ -1,0 +1,69 @@
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Missing Supabase environment variables');
+}
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+export type Profile = {
+  id: string;
+  email: string;
+  full_name: string;
+  age: number | null;
+  height_cm: number | null;
+  body_fat_percentage: number | null;
+  gender: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type WorkoutPlan = {
+  id: string;
+  user_id: string;
+  name: string;
+  start_date: string;
+  end_date: string;
+  is_active: boolean;
+  created_at: string;
+};
+
+export type Exercise = {
+  name: string;
+  sets: number;
+  reps: number;
+  weight?: number;
+};
+
+export type WorkoutDay = {
+  id: string;
+  plan_id: string;
+  day_of_week: number;
+  is_rest_day: boolean;
+  workout_name: string;
+  exercises: Exercise[];
+  created_at: string;
+};
+
+export type DailyLog = {
+  id: string;
+  user_id: string;
+  log_date: string;
+  workout_completed: boolean;
+  workout_day_id: string | null;
+  notes: string;
+  completed_exercises?: string[];
+  created_at: string;
+};
+
+export type WeightLog = {
+  id: string;
+  user_id: string;
+  log_date: string;
+  weight: number;
+  unit: 'kg' | 'lbs';
+  created_at: string;
+};
