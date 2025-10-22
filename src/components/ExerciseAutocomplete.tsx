@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase, ExerciseLibraryItem } from '../lib/supabase';
-import { Search, X, Check } from 'lucide-react';
+import LoadingSpinner from "./LoadingSpinner";
+import { Search, X, Check, Dumbbell } from "lucide-react";
 
 interface ExerciseAutocompleteProps {
   value: string;
@@ -12,12 +13,14 @@ interface ExerciseAutocompleteProps {
 export default function ExerciseAutocomplete({
   value,
   onChange,
-  placeholder = 'Exercise name',
-  className = '',
+  placeholder = "Exercise name",
+  className = "",
 }: ExerciseAutocompleteProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [exercises, setExercises] = useState<ExerciseLibraryItem[]>([]);
-  const [filteredExercises, setFilteredExercises] = useState<ExerciseLibraryItem[]>([]);
+  const [filteredExercises, setFilteredExercises] = useState<
+    ExerciseLibraryItem[]
+  >([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState(value);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -33,13 +36,16 @@ export default function ExerciseAutocomplete({
   useEffect(() => {
     // Close dropdown when clicking outside
     const handleClickOutside = (event: MouseEvent) => {
-      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+      if (
+        wrapperRef.current &&
+        !wrapperRef.current.contains(event.target as Node)
+      ) {
         setIsOpen(false);
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   useEffect(() => {
@@ -48,7 +54,9 @@ export default function ExerciseAutocomplete({
       const filtered = exercises.filter(
         (ex) =>
           ex.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          ex.tags.some((tag) => tag.toLowerCase().includes(searchTerm.toLowerCase()))
+          ex.tags.some((tag) =>
+            tag.toLowerCase().includes(searchTerm.toLowerCase())
+          )
       );
       setFilteredExercises(filtered);
     } else {
@@ -60,15 +68,15 @@ export default function ExerciseAutocomplete({
     setLoading(true);
     try {
       const { data, error } = await supabase
-        .from('exercise_library')
-        .select('*')
-        .order('name');
+        .from("exercise_library")
+        .select("*")
+        .order("name");
 
       if (error) throw error;
       setExercises(data || []);
       setFilteredExercises(data || []);
     } catch (error) {
-      console.error('Error fetching exercises:', error);
+      console.error("Error fetching exercises:", error);
     } finally {
       setLoading(false);
     }
@@ -89,8 +97,8 @@ export default function ExerciseAutocomplete({
   };
 
   const handleClear = () => {
-    setSearchTerm('');
-    onChange('');
+    setSearchTerm("");
+    onChange("");
     setIsOpen(false);
   };
 
@@ -99,7 +107,7 @@ export default function ExerciseAutocomplete({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Escape') {
+    if (e.key === "Escape") {
       setIsOpen(false);
     }
   };
@@ -131,12 +139,16 @@ export default function ExerciseAutocomplete({
       {isOpen && (
         <div className="absolute z-50 w-full mt-1 bg-slate-800 border border-slate-700 rounded-lg shadow-xl max-h-64 overflow-y-auto">
           {loading ? (
-            <div className="px-3 py-2 text-slate-400 text-sm">Loading exercises...</div>
+            <div className="px-3 py-4">
+              <LoadingSpinner size="sm" text="Loading exercises..." />
+            </div>
           ) : filteredExercises.length > 0 ? (
             <>
               {/* Show custom option if user typed something not in list */}
               {searchTerm &&
-                !exercises.find((ex) => ex.name.toLowerCase() === searchTerm.toLowerCase()) && (
+                !exercises.find(
+                  (ex) => ex.name.toLowerCase() === searchTerm.toLowerCase()
+                ) && (
                   <button
                     type="button"
                     onClick={() => {
@@ -147,8 +159,12 @@ export default function ExerciseAutocomplete({
                   >
                     <div className="flex items-center gap-2">
                       <div className="flex-1">
-                        <div className="text-white font-medium">"{searchTerm}"</div>
-                        <div className="text-slate-400 text-xs">Add custom exercise</div>
+                        <div className="text-white font-medium">
+                          "{searchTerm}"
+                        </div>
+                        <div className="text-slate-400 text-xs">
+                          Add custom exercise
+                        </div>
                       </div>
                     </div>
                   </button>
@@ -164,7 +180,9 @@ export default function ExerciseAutocomplete({
                 >
                   <div className="flex items-center gap-2">
                     <div className="flex-1">
-                      <div className="text-white font-medium">{exercise.name}</div>
+                      <div className="text-white font-medium">
+                        {exercise.name}
+                      </div>
                       {exercise.tags.length > 0 && (
                         <div className="flex flex-wrap gap-1 mt-1">
                           {exercise.tags.slice(0, 3).map((tag) => (
@@ -178,7 +196,8 @@ export default function ExerciseAutocomplete({
                         </div>
                       )}
                     </div>
-                    {searchTerm.toLowerCase() === exercise.name.toLowerCase() && (
+                    {searchTerm.toLowerCase() ===
+                      exercise.name.toLowerCase() && (
                       <Check className="w-4 h-4 text-green-400" />
                     )}
                   </div>

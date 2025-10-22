@@ -8,6 +8,7 @@ import {
 } from "../lib/supabase";
 import { useAuth } from '../contexts/AuthContext';
 import WorkoutSession from "./WorkoutSession";
+import LoadingSpinner from "./LoadingSpinner";
 import {
   CheckCircle2,
   Circle,
@@ -26,7 +27,7 @@ import {
   RotateCcw,
   Type,
   Check,
-  Loader2,
+  Dumbbell,
   Play,
 } from "lucide-react";
 
@@ -477,7 +478,7 @@ export default function DailyTracker() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-slate-400">Loading...</div>
+        <LoadingSpinner size="lg" />
       </div>
     );
   }
@@ -772,7 +773,7 @@ export default function DailyTracker() {
               <div className="flex items-center gap-2">
                 {saveStatus === "saving" && (
                   <div className="flex items-center gap-1.5 text-xs text-slate-400">
-                    <Loader2 className="w-3 h-3 animate-spin" />
+                    <Dumbbell className="w-3 h-3 animate-bounce" />
                     Saving...
                   </div>
                 )}

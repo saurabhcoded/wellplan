@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { User, LogOut, Save, Loader2 } from 'lucide-react';
+import LoadingSpinner from "./LoadingSpinner";
+import { User, LogOut, Save, Dumbbell } from "lucide-react";
 
 interface HealthMetrics {
   age: number | null;
@@ -15,13 +16,16 @@ export default function Account() {
   const { user, signOut } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [message, setMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
   const [metrics, setMetrics] = useState<HealthMetrics>({
     age: null,
     height_cm: null,
     body_fat_percentage: null,
     gender: null,
-    full_name: '',
+    full_name: "",
   });
 
   useEffect(() => {
@@ -124,7 +128,7 @@ export default function Account() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+        <LoadingSpinner size="lg" />
       </div>
     );
   }
@@ -317,7 +321,7 @@ export default function Account() {
             >
               {saving ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Dumbbell className="w-4 h-4 animate-bounce" />
                   Saving...
                 </>
               ) : (

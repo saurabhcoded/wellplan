@@ -289,9 +289,18 @@ export default function Auth() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 px-4 bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-semibold rounded-lg hover:from-blue-600 hover:to-cyan-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-800 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full py-3 px-4 bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-semibold rounded-lg hover:from-blue-600 hover:to-cyan-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-800 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                {loading ? "Loading..." : isLogin ? "Sign In" : "Sign Up"}
+                {loading ? (
+                  <>
+                    <Dumbbell className="w-5 h-5 animate-bounce" />
+                    <span>Loading...</span>
+                  </>
+                ) : isLogin ? (
+                  "Sign In"
+                ) : (
+                  "Sign Up"
+                )}
               </button>
             </form>
           )}
