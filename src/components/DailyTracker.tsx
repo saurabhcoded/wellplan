@@ -38,7 +38,9 @@ export default function DailyTracker() {
   const [loading, setLoading] = useState(true);
   const [notesTextareaRef, setNotesTextareaRef] =
     useState<HTMLTextAreaElement | null>(null);
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">(
+    "idle"
+  );
 
   const today = new Date().toISOString().split("T")[0];
   const dayOfWeek = new Date().getDay();
@@ -52,7 +54,7 @@ export default function DailyTracker() {
   useEffect(() => {
     if (!user || notes === todayLog?.notes) return;
 
-    setSaveStatus('saving');
+    setSaveStatus("saving");
     const timeoutId = setTimeout(() => {
       saveNotesAuto();
     }, 1500); // Wait 1.5 seconds after user stops typing
@@ -380,7 +382,7 @@ export default function DailyTracker() {
 
         if (data) {
           setTodayLog(data);
-          setSaveStatus('saved');
+          setSaveStatus("saved");
           // If notes were cleared and history is showing, reload it
           if (showNotesHistory) {
             loadPreviousNotes();
@@ -400,15 +402,15 @@ export default function DailyTracker() {
 
         if (data) {
           setTodayLog(data);
-          setSaveStatus('saved');
+          setSaveStatus("saved");
         }
       }
 
       // Reset to idle after showing "saved" for 2 seconds
-      setTimeout(() => setSaveStatus('idle'), 2000);
+      setTimeout(() => setSaveStatus("idle"), 2000);
     } catch (error) {
-      console.error('Error saving notes:', error);
-      setSaveStatus('idle');
+      console.error("Error saving notes:", error);
+      setSaveStatus("idle");
     }
   };
 
@@ -680,16 +682,16 @@ export default function DailyTracker() {
               <RotateCcw className="w-4 h-4" />
             </button>
             <div className="flex-1" />
-            
+
             {/* Auto-save status indicator */}
             <div className="flex items-center gap-2">
-              {saveStatus === 'saving' && (
+              {saveStatus === "saving" && (
                 <div className="flex items-center gap-1.5 text-xs text-slate-400">
                   <Loader2 className="w-3 h-3 animate-spin" />
                   Saving...
                 </div>
               )}
-              {saveStatus === 'saved' && (
+              {saveStatus === "saved" && (
                 <div className="flex items-center gap-1.5 text-xs text-green-400">
                   <Check className="w-3 h-3" />
                   Saved
@@ -706,7 +708,7 @@ export default function DailyTracker() {
             value={notes}
             onChange={(e) => {
               setNotes(e.target.value);
-              if (saveStatus === 'saved') setSaveStatus('idle');
+              if (saveStatus === "saved") setSaveStatus("idle");
             }}
             placeholder="Write your today's notes here... (auto-saves as you type)"
             className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-b-lg text-white placeholder-slate-500 min-h-[160px] resize-y focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
