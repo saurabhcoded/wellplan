@@ -1,6 +1,13 @@
 import { useState, useEffect } from 'react';
-import { supabase, DailyLog, WeightLog, WorkoutDay } from '../lib/supabase';
+import {
+  supabase,
+  DailyLog,
+  WeightLog,
+  WorkoutDay,
+  ExerciseLibraryItem,
+} from "../lib/supabase";
 import { useAuth } from '../contexts/AuthContext';
+import WorkoutSession from "./WorkoutSession";
 import {
   CheckCircle2,
   Circle,
@@ -20,6 +27,7 @@ import {
   Type,
   Check,
   Loader2,
+  Play,
 } from "lucide-react";
 
 export default function DailyTracker() {
@@ -41,6 +49,10 @@ export default function DailyTracker() {
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">(
     "idle"
   );
+  const [showWorkoutSession, setShowWorkoutSession] = useState(false);
+  const [exerciseLibraryMap, setExerciseLibraryMap] = useState<
+    Map<string, ExerciseLibraryItem>
+  >(new Map());
 
   const today = new Date().toISOString().split("T")[0];
   const dayOfWeek = new Date().getDay();
@@ -48,7 +60,26 @@ export default function DailyTracker() {
   useEffect(() => {
     loadTodayData();
     loadPreviousNotes();
+    loadExerciseLibrary();
   }, [user]);
+
+  const loadExerciseLibrary = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("exercise_library")
+        .select("*");
+
+      if (error) throw error;
+
+      const libraryMap = new Map<string, ExerciseLibraryItem>();
+      data?.forEach((exercise) => {
+        libraryMap.set(exercise.id, exercise);
+      });
+      setExerciseLibraryMap(libraryMap);
+    } catch (error) {
+      console.error("Error loading exercise library:", error);
+    }
+  };
 
   // Auto-save notes with debounce
   useEffect(() => {
@@ -414,6 +445,35 @@ export default function DailyTracker() {
     }
   };
 
+  const handleWorkoutComplete = async (completed: string[]) => {
+    // Don't close session here - let user continue or manually exit
+    setCompletedExercises(completed);
+
+    // Update the database
+    if (todayLog) {
+      await supabase
+        .from("daily_logs")
+        .update({
+          completed_exercises: completed,
+          workout_completed:
+            completed.length === todayWorkout?.exercises.length,
+        })
+        .eq("id", todayLog.id);
+    } else if (user) {
+      await supabase.from("daily_logs").insert({
+        user_id: user.id,
+        log_date: today,
+        workout_completed: completed.length === todayWorkout?.exercises.length,
+        workout_day_id: todayWorkout?.id || null,
+        notes: "",
+        completed_exercises: completed,
+      });
+    }
+
+    // Reload data to update the dashboard in background
+    loadTodayData();
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -423,367 +483,395 @@ export default function DailyTracker() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <h2 className="text-3xl font-bold text-white mb-6">Today's Tracker</h2>
+    <>
+      {showWorkoutSession && todayWorkout && !todayWorkout.is_rest_day && (
+        <WorkoutSession
+          exercises={todayWorkout.exercises}
+          workoutName={todayWorkout.workout_name}
+          onClose={() => setShowWorkoutSession(false)}
+          onComplete={handleWorkoutComplete}
+          exerciseLibrary={exerciseLibraryMap}
+          initialCompletedExercises={completedExercises}
+        />
+      )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-          <h3 className="text-xl font-semibold text-white mb-4">
-            Today's Workout
-          </h3>
+      <div className="max-w-4xl mx-auto">
+        <h2 className="text-3xl font-bold text-white mb-6">Today's Tracker</h2>
 
-          {todayWorkout ? (
-            todayWorkout.is_rest_day ? (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-semibold text-white">
+                Today's Workout
+              </h3>
+              {todayWorkout &&
+                !todayWorkout.is_rest_day &&
+                todayWorkout.exercises.length > 0 && (
+                  <button
+                    onClick={() => setShowWorkoutSession(true)}
+                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg hover:from-blue-600 hover:to-cyan-600 transition font-semibold"
+                  >
+                    <Play className="w-4 h-4" />
+                    Start Workout
+                  </button>
+                )}
+            </div>
+
+            {todayWorkout ? (
+              todayWorkout.is_rest_day ? (
+                <div className="text-center py-8">
+                  <div className="text-slate-400 mb-4">Rest Day</div>
+                  <p className="text-slate-500 text-sm">
+                    Take it easy and recover!
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  <div className="mb-4">
+                    <h4 className="text-cyan-400 font-medium text-lg mb-3">
+                      {todayWorkout.workout_name}
+                    </h4>
+                    <div className="space-y-2">
+                      {todayWorkout.exercises.map((exercise, i) => {
+                        const isCompleted = completedExercises.includes(
+                          exercise.name
+                        );
+                        return (
+                          <button
+                            key={i}
+                            onClick={() => toggleExercise(exercise.name)}
+                            className={`w-full bg-slate-900 p-3 rounded-lg flex items-center gap-3 transition hover:bg-slate-800 ${
+                              isCompleted
+                                ? "border-2 border-green-500/50"
+                                : "border-2 border-transparent"
+                            }`}
+                          >
+                            {isCompleted ? (
+                              <CheckCircle2 className="w-5 h-5 text-green-400 flex-shrink-0" />
+                            ) : (
+                              <Circle className="w-5 h-5 text-slate-500 flex-shrink-0" />
+                            )}
+                            <div className="flex-1 text-left">
+                              <div
+                                className={`font-medium ${
+                                  isCompleted ? "text-green-400" : "text-white"
+                                }`}
+                              >
+                                {exercise.name}
+                              </div>
+                              <div className="text-slate-400 text-sm">
+                                {exercise.sets} sets × {exercise.reps} reps
+                                {exercise.weight && ` @ ${exercise.weight} kg`}
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Progress indicator */}
+                  <div className="mt-4 p-4 bg-slate-900 rounded-lg border border-slate-700">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-slate-300 text-sm font-medium">
+                        Progress
+                      </span>
+                      <span className="text-slate-400 text-sm">
+                        {completedExercises.length} /{" "}
+                        {todayWorkout.exercises.length}
+                      </span>
+                    </div>
+                    <div className="w-full bg-slate-700 rounded-full h-2.5">
+                      <div
+                        className={`h-2.5 rounded-full transition-all duration-300 ${(() => {
+                          const progress =
+                            (completedExercises.length /
+                              todayWorkout.exercises.length) *
+                            100;
+                          if (progress === 0) return "bg-slate-600";
+                          if (progress < 33) return "bg-emerald-900/80";
+                          if (progress < 67) return "bg-emerald-700/90";
+                          if (progress < 100) return "bg-emerald-600";
+                          return "bg-gradient-to-r from-green-500 to-emerald-400";
+                        })()}`}
+                        style={{
+                          width: `${
+                            (completedExercises.length /
+                              todayWorkout.exercises.length) *
+                            100
+                          }%`,
+                        }}
+                      />
+                    </div>
+                    {completedExercises.length ===
+                      todayWorkout.exercises.length &&
+                      todayWorkout.exercises.length > 0 && (
+                        <div className="mt-3 text-center text-green-400 font-medium animate-pulse">
+                          🎉 Workout Complete!
+                        </div>
+                      )}
+                  </div>
+                </div>
+              )
+            ) : (
               <div className="text-center py-8">
-                <div className="text-slate-400 mb-4">Rest Day</div>
+                <div className="text-slate-400 mb-2">No workout scheduled</div>
                 <p className="text-slate-500 text-sm">
-                  Take it easy and recover!
+                  Create a workout plan to see today's exercises
                 </p>
               </div>
-            ) : (
-              <div>
-                <div className="mb-4">
-                  <h4 className="text-cyan-400 font-medium text-lg mb-3">
-                    {todayWorkout.workout_name}
-                  </h4>
-                  <div className="space-y-2">
-                    {todayWorkout.exercises.map((exercise, i) => {
-                      const isCompleted = completedExercises.includes(
-                        exercise.name
-                      );
-                      return (
-                        <button
-                          key={i}
-                          onClick={() => toggleExercise(exercise.name)}
-                          className={`w-full bg-slate-900 p-3 rounded-lg flex items-center gap-3 transition hover:bg-slate-800 ${
-                            isCompleted
-                              ? "border-2 border-green-500/50"
-                              : "border-2 border-transparent"
-                          }`}
-                        >
-                          {isCompleted ? (
-                            <CheckCircle2 className="w-5 h-5 text-green-400 flex-shrink-0" />
-                          ) : (
-                            <Circle className="w-5 h-5 text-slate-500 flex-shrink-0" />
-                          )}
-                          <div className="flex-1 text-left">
-                            <div
-                              className={`font-medium ${
-                                isCompleted ? "text-green-400" : "text-white"
-                              }`}
-                            >
-                              {exercise.name}
-                            </div>
-                            <div className="text-slate-400 text-sm">
-                              {exercise.sets} sets × {exercise.reps} reps
-                              {exercise.weight && ` @ ${exercise.weight} kg`}
-                            </div>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
+            )}
+          </div>
 
-                {/* Progress indicator */}
-                <div className="mt-4 p-4 bg-slate-900 rounded-lg border border-slate-700">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-slate-300 text-sm font-medium">
-                      Progress
-                    </span>
-                    <span className="text-slate-400 text-sm">
-                      {completedExercises.length} /{" "}
-                      {todayWorkout.exercises.length}
-                    </span>
-                  </div>
-                  <div className="w-full bg-slate-700 rounded-full h-2.5">
-                    <div
-                      className={`h-2.5 rounded-full transition-all duration-300 ${(() => {
-                        const progress =
-                          (completedExercises.length /
-                            todayWorkout.exercises.length) *
-                          100;
-                        if (progress === 0) return "bg-slate-600";
-                        if (progress < 33) return "bg-emerald-900/80";
-                        if (progress < 67) return "bg-emerald-700/90";
-                        if (progress < 100) return "bg-emerald-600";
-                        return "bg-gradient-to-r from-green-500 to-emerald-400";
-                      })()}`}
-                      style={{
-                        width: `${
-                          (completedExercises.length /
-                            todayWorkout.exercises.length) *
-                          100
-                        }%`,
-                      }}
-                    />
-                  </div>
-                  {completedExercises.length ===
-                    todayWorkout.exercises.length &&
-                    todayWorkout.exercises.length > 0 && (
-                      <div className="mt-3 text-center text-green-400 font-medium animate-pulse">
-                        🎉 Workout Complete!
-                      </div>
-                    )}
+          <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+            <div className="flex items-center gap-2 mb-4">
+              <Scale className="w-5 h-5 text-blue-400" />
+              <h3 className="text-xl font-semibold text-white">Weight Log</h3>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Today's Weight
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={weight}
+                    onChange={(e) => setWeight(e.target.value)}
+                    placeholder="70.5"
+                    className="flex-1 px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white"
+                  />
+                  <select
+                    value={unit}
+                    onChange={(e) => setUnit(e.target.value as "kg" | "lbs")}
+                    className="px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white"
+                  >
+                    <option value="kg">kg</option>
+                    <option value="lbs">lbs</option>
+                  </select>
                 </div>
               </div>
-            )
-          ) : (
-            <div className="text-center py-8">
-              <div className="text-slate-400 mb-2">No workout scheduled</div>
-              <p className="text-slate-500 text-sm">
-                Create a workout plan to see today's exercises
-              </p>
+
+              <button
+                onClick={saveWeight}
+                disabled={!weight}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Save className="w-4 h-4" />
+                {todayWeight ? "Update Weight" : "Save Weight"}
+              </button>
+
+              {todayWeight && (
+                <div className="text-center text-sm text-slate-400 mt-2">
+                  Logged: {todayWeight.weight} {todayWeight.unit}
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
 
         <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-          <div className="flex items-center gap-2 mb-4">
-            <Scale className="w-5 h-5 text-blue-400" />
-            <h3 className="text-xl font-semibold text-white">Weight Log</h3>
-          </div>
-
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
-                Today's Weight
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="number"
-                  step="0.1"
-                  value={weight}
-                  onChange={(e) => setWeight(e.target.value)}
-                  placeholder="70.5"
-                  className="flex-1 px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white"
-                />
-                <select
-                  value={unit}
-                  onChange={(e) => setUnit(e.target.value as "kg" | "lbs")}
-                  className="px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white"
-                >
-                  <option value="kg">kg</option>
-                  <option value="lbs">lbs</option>
-                </select>
-              </div>
-            </div>
-
-            <button
-              onClick={saveWeight}
-              disabled={!weight}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Save className="w-4 h-4" />
-              {todayWeight ? "Update Weight" : "Save Weight"}
-            </button>
-
-            {todayWeight && (
-              <div className="text-center text-sm text-slate-400 mt-2">
-                Logged: {todayWeight.weight} {todayWeight.unit}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <StickyNote className="w-5 h-5 text-amber-400" />
-            <h3 className="text-xl font-semibold text-white">Notes</h3>
-          </div>
-          <button
-            onClick={() => {
-              setShowNotesHistory(!showNotesHistory);
-              if (!showNotesHistory) {
-                loadPreviousNotes();
-              }
-            }}
-            className="flex items-center gap-1 px-3 py-1.5 text-sm text-slate-400 hover:text-white bg-slate-900 hover:bg-slate-700 rounded-lg transition"
-          >
-            {showNotesHistory ? (
-              <>
-                <ChevronUp className="w-4 h-4" />
-                Hide Calendar
-              </>
-            ) : (
-              <>
-                <ChevronDown className="w-4 h-4" />
-                <CalendarIcon className="w-4 h-4" />
-                View Calendar
-              </>
-            )}
-          </button>
-        </div>
-
-        {/* Today's Notes */}
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-slate-300 mb-2">
-            Today (
-            {new Date(today).toLocaleDateString("en-US", {
-              weekday: "short",
-              month: "short",
-              day: "numeric",
-            })}
-            )
-          </label>
-
-          {/* Formatting Toolbar */}
-          <div className="mb-2 flex flex-wrap items-center gap-1 p-2 bg-slate-900 border border-slate-700 rounded-t-lg border-b-0">
-            <button
-              type="button"
-              onClick={() => insertFormatting("**")}
-              className="p-2 hover:bg-slate-700 rounded text-slate-400 hover:text-white transition"
-              title="Bold"
-            >
-              <Bold className="w-4 h-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => insertFormatting("*")}
-              className="p-2 hover:bg-slate-700 rounded text-slate-400 hover:text-white transition"
-              title="Italic"
-            >
-              <Italic className="w-4 h-4" />
-            </button>
-            <div className="w-px h-6 bg-slate-700 mx-1" />
-            <button
-              type="button"
-              onClick={insertHeading}
-              className="p-2 hover:bg-slate-700 rounded text-slate-400 hover:text-white transition"
-              title="Heading"
-            >
-              <Type className="w-4 h-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => insertListItem("bullet")}
-              className="p-2 hover:bg-slate-700 rounded text-slate-400 hover:text-white transition"
-              title="Bullet List"
-            >
-              <List className="w-4 h-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => insertListItem("numbered")}
-              className="p-2 hover:bg-slate-700 rounded text-slate-400 hover:text-white transition"
-              title="Numbered List"
-            >
-              <ListOrdered className="w-4 h-4" />
-            </button>
-            <div className="w-px h-6 bg-slate-700 mx-1" />
-            <button
-              type="button"
-              onClick={clearFormatting}
-              className="p-2 hover:bg-slate-700 rounded text-slate-400 hover:text-white transition"
-              title="Clear Formatting"
-            >
-              <RotateCcw className="w-4 h-4" />
-            </button>
-            <div className="flex-1" />
-
-            {/* Auto-save status indicator */}
+          <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              {saveStatus === "saving" && (
-                <div className="flex items-center gap-1.5 text-xs text-slate-400">
-                  <Loader2 className="w-3 h-3 animate-spin" />
-                  Saving...
-                </div>
-              )}
-              {saveStatus === "saved" && (
-                <div className="flex items-center gap-1.5 text-xs text-green-400">
-                  <Check className="w-3 h-3" />
-                  Saved
-                </div>
-              )}
-              <span className="text-xs text-slate-500">
-                {notes.length} chars
-              </span>
+              <StickyNote className="w-5 h-5 text-amber-400" />
+              <h3 className="text-xl font-semibold text-white">Notes</h3>
             </div>
+            <button
+              onClick={() => {
+                setShowNotesHistory(!showNotesHistory);
+                if (!showNotesHistory) {
+                  loadPreviousNotes();
+                }
+              }}
+              className="flex items-center gap-1 px-3 py-1.5 text-sm text-slate-400 hover:text-white bg-slate-900 hover:bg-slate-700 rounded-lg transition"
+            >
+              {showNotesHistory ? (
+                <>
+                  <ChevronUp className="w-4 h-4" />
+                  Hide Calendar
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="w-4 h-4" />
+                  <CalendarIcon className="w-4 h-4" />
+                  View Calendar
+                </>
+              )}
+            </button>
           </div>
 
-          <textarea
-            ref={(el) => setNotesTextareaRef(el)}
-            value={notes}
-            onChange={(e) => {
-              setNotes(e.target.value);
-              if (saveStatus === "saved") setSaveStatus("idle");
-            }}
-            placeholder="Write your today's notes here... (auto-saves as you type)"
-            className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-b-lg text-white placeholder-slate-500 min-h-[160px] resize-y focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
-          />
-        </div>
+          {/* Today's Notes */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-slate-300 mb-2">
+              Today (
+              {new Date(today).toLocaleDateString("en-US", {
+                weekday: "short",
+                month: "short",
+                day: "numeric",
+              })}
+              )
+            </label>
 
-        {/* Calendar View for Previous Notes */}
-        {showNotesHistory && (
-          <div className="mt-6 pt-6 border-t border-slate-700">
-            {/* Calendar Header */}
-            <div className="flex items-center justify-between mb-4">
-              <h4 className="text-sm font-semibold text-slate-400 uppercase tracking-wide flex items-center gap-2">
-                <CalendarIcon className="w-4 h-4" />
-                Notes Calendar
-              </h4>
+            {/* Formatting Toolbar */}
+            <div className="mb-2 flex flex-wrap items-center gap-1 p-2 bg-slate-900 border border-slate-700 rounded-t-lg border-b-0">
+              <button
+                type="button"
+                onClick={() => insertFormatting("**")}
+                className="p-2 hover:bg-slate-700 rounded text-slate-400 hover:text-white transition"
+                title="Bold"
+              >
+                <Bold className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => insertFormatting("*")}
+                className="p-2 hover:bg-slate-700 rounded text-slate-400 hover:text-white transition"
+                title="Italic"
+              >
+                <Italic className="w-4 h-4" />
+              </button>
+              <div className="w-px h-6 bg-slate-700 mx-1" />
+              <button
+                type="button"
+                onClick={insertHeading}
+                className="p-2 hover:bg-slate-700 rounded text-slate-400 hover:text-white transition"
+                title="Heading"
+              >
+                <Type className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => insertListItem("bullet")}
+                className="p-2 hover:bg-slate-700 rounded text-slate-400 hover:text-white transition"
+                title="Bullet List"
+              >
+                <List className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => insertListItem("numbered")}
+                className="p-2 hover:bg-slate-700 rounded text-slate-400 hover:text-white transition"
+                title="Numbered List"
+              >
+                <ListOrdered className="w-4 h-4" />
+              </button>
+              <div className="w-px h-6 bg-slate-700 mx-1" />
+              <button
+                type="button"
+                onClick={clearFormatting}
+                className="p-2 hover:bg-slate-700 rounded text-slate-400 hover:text-white transition"
+                title="Clear Formatting"
+              >
+                <RotateCcw className="w-4 h-4" />
+              </button>
+              <div className="flex-1" />
+
+              {/* Auto-save status indicator */}
               <div className="flex items-center gap-2">
-                <button
-                  onClick={() => changeMonth("prev")}
-                  className="p-1.5 hover:bg-slate-700 rounded-lg transition"
-                >
-                  <ChevronLeft className="w-4 h-4 text-slate-400" />
-                </button>
-                <span className="text-sm font-medium text-slate-300 min-w-[120px] text-center">
-                  {calendarMonth.toLocaleDateString("en-US", {
-                    month: "long",
-                    year: "numeric",
-                  })}
+                {saveStatus === "saving" && (
+                  <div className="flex items-center gap-1.5 text-xs text-slate-400">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    Saving...
+                  </div>
+                )}
+                {saveStatus === "saved" && (
+                  <div className="flex items-center gap-1.5 text-xs text-green-400">
+                    <Check className="w-3 h-3" />
+                    Saved
+                  </div>
+                )}
+                <span className="text-xs text-slate-500">
+                  {notes.length} chars
                 </span>
-                <button
-                  onClick={() => changeMonth("next")}
-                  className="p-1.5 hover:bg-slate-700 rounded-lg transition"
-                >
-                  <ChevronRight className="w-4 h-4 text-slate-400" />
-                </button>
               </div>
             </div>
-            {/* Calendar Grid */}
-            <div className="mb-4">
-              {/* Day labels */}
-              <div className="grid grid-cols-7 gap-1 mb-2">
-                {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(
-                  (day) => (
-                    <div
-                      key={day}
-                      className="text-center text-xs font-medium text-slate-500 py-1"
-                    >
-                      {day}
-                    </div>
-                  )
-                )}
+
+            <textarea
+              ref={(el) => setNotesTextareaRef(el)}
+              value={notes}
+              onChange={(e) => {
+                setNotes(e.target.value);
+                if (saveStatus === "saved") setSaveStatus("idle");
+              }}
+              placeholder="Write your today's notes here... (auto-saves as you type)"
+              className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-b-lg text-white placeholder-slate-500 min-h-[160px] resize-y focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
+            />
+          </div>
+
+          {/* Calendar View for Previous Notes */}
+          {showNotesHistory && (
+            <div className="mt-6 pt-6 border-t border-slate-700">
+              {/* Calendar Header */}
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-sm font-semibold text-slate-400 uppercase tracking-wide flex items-center gap-2">
+                  <CalendarIcon className="w-4 h-4" />
+                  Notes Calendar
+                </h4>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => changeMonth("prev")}
+                    className="p-1.5 hover:bg-slate-700 rounded-lg transition"
+                  >
+                    <ChevronLeft className="w-4 h-4 text-slate-400" />
+                  </button>
+                  <span className="text-sm font-medium text-slate-300 min-w-[120px] text-center">
+                    {calendarMonth.toLocaleDateString("en-US", {
+                      month: "long",
+                      year: "numeric",
+                    })}
+                  </span>
+                  <button
+                    onClick={() => changeMonth("next")}
+                    className="p-1.5 hover:bg-slate-700 rounded-lg transition"
+                  >
+                    <ChevronRight className="w-4 h-4 text-slate-400" />
+                  </button>
+                </div>
               </div>
+              {/* Calendar Grid */}
+              <div className="mb-4">
+                {/* Day labels */}
+                <div className="grid grid-cols-7 gap-1 mb-2">
+                  {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(
+                    (day) => (
+                      <div
+                        key={day}
+                        className="text-center text-xs font-medium text-slate-500 py-1"
+                      >
+                        {day}
+                      </div>
+                    )
+                  )}
+                </div>
 
-              {/* Calendar days */}
-              <div className="grid grid-cols-7 gap-1">
-                {getCalendarDays().map((date, index) => {
-                  if (!date) {
-                    return (
-                      <div key={`empty-${index}`} className="aspect-square" />
+                {/* Calendar days */}
+                <div className="grid grid-cols-7 gap-1">
+                  {getCalendarDays().map((date, index) => {
+                    if (!date) {
+                      return (
+                        <div key={`empty-${index}`} className="aspect-square" />
+                      );
+                    }
+
+                    const dateStr = date.toISOString().split("T")[0];
+                    const log = previousNotes.find(
+                      (l) => l.log_date === dateStr
                     );
-                  }
+                    const hasNotes =
+                      log && log.notes && log.notes.trim() !== "";
+                    const isToday = dateStr === today;
+                    const isSelected = dateStr === selectedDate;
 
-                  const dateStr = date.toISOString().split("T")[0];
-                  const log = previousNotes.find((l) => l.log_date === dateStr);
-                  const hasNotes = log && log.notes && log.notes.trim() !== "";
-                  const isToday = dateStr === today;
-                  const isSelected = dateStr === selectedDate;
-
-                  return (
-                    <button
-                      key={dateStr}
-                      onClick={() =>
-                        setSelectedDate(isSelected ? null : dateStr)
-                      }
-                      disabled={!hasNotes && !isToday}
-                      className={`aspect-square rounded-lg flex items-center justify-center text-sm font-medium transition relative
+                    return (
+                      <button
+                        key={dateStr}
+                        onClick={() =>
+                          setSelectedDate(isSelected ? null : dateStr)
+                        }
+                        disabled={!hasNotes && !isToday}
+                        className={`aspect-square rounded-lg flex items-center justify-center text-sm font-medium transition relative
                         ${isToday ? "ring-2 ring-blue-400" : ""}
                         ${isSelected ? "bg-blue-500 text-white" : ""}
                         ${
@@ -807,68 +895,72 @@ export default function DailyTracker() {
                             : ""
                         }
                       `}
-                    >
-                      {date.getDate()}
-                      {hasNotes && !isSelected && (
-                        <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-current" />
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Legend */}
-              <div className="flex flex-wrap items-center gap-3 mt-4 text-xs text-slate-400">
-                <div className="flex items-center gap-1.5">
-                  <div className="w-3 h-3 rounded bg-green-500/20 border border-green-500/50" />
-                  <span>Workout + Notes</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <div className="w-3 h-3 rounded bg-amber-500/20 border border-amber-500/50" />
-                  <span>Notes Only</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <div className="w-3 h-3 rounded ring-2 ring-blue-400" />
-                  <span>Today</span>
-                </div>
-              </div>
-            </div>
-            ;{/* Selected Date Details */}
-            {selectedDate &&
-              (() => {
-                const log = previousNotes.find(
-                  (l) => l.log_date === selectedDate
-                );
-                if (!log || !log.notes) return null;
-
-                return (
-                  <div className="bg-slate-900 rounded-lg p-4 border border-slate-700">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-slate-300">
-                          {new Date(selectedDate).toLocaleDateString("en-US", {
-                            weekday: "long",
-                            month: "long",
-                            day: "numeric",
-                            year: "numeric",
-                          })}
-                        </span>
-                        {log.workout_completed && (
-                          <span className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full border border-green-500/50">
-                            ✓ Workout Completed
-                          </span>
+                      >
+                        {date.getDate()}
+                        {hasNotes && !isSelected && (
+                          <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-current" />
                         )}
-                      </div>
-                    </div>
-                    <p className="text-slate-300 text-sm leading-relaxed whitespace-pre-wrap">
-                      {log.notes}
-                    </p>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Legend */}
+                <div className="flex flex-wrap items-center gap-3 mt-4 text-xs text-slate-400">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-3 h-3 rounded bg-green-500/20 border border-green-500/50" />
+                    <span>Workout + Notes</span>
                   </div>
-                );
-              })()}
-          </div>
-        )}
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-3 h-3 rounded bg-amber-500/20 border border-amber-500/50" />
+                    <span>Notes Only</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-3 h-3 rounded ring-2 ring-blue-400" />
+                    <span>Today</span>
+                  </div>
+                </div>
+              </div>
+              ;{/* Selected Date Details */}
+              {selectedDate &&
+                (() => {
+                  const log = previousNotes.find(
+                    (l) => l.log_date === selectedDate
+                  );
+                  if (!log || !log.notes) return null;
+
+                  return (
+                    <div className="bg-slate-900 rounded-lg p-4 border border-slate-700">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-slate-300">
+                            {new Date(selectedDate).toLocaleDateString(
+                              "en-US",
+                              {
+                                weekday: "long",
+                                month: "long",
+                                day: "numeric",
+                                year: "numeric",
+                              }
+                            )}
+                          </span>
+                          {log.workout_completed && (
+                            <span className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full border border-green-500/50">
+                              ✓ Workout Completed
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <p className="text-slate-300 text-sm leading-relaxed whitespace-pre-wrap">
+                        {log.notes}
+                      </p>
+                    </div>
+                  );
+                })()}
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </>
   );
 }

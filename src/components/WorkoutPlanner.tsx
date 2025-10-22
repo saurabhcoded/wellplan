@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase, WorkoutPlan, WorkoutDay, Exercise } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Plus, Trash2, Save, Calendar } from 'lucide-react';
+import ExerciseAutocomplete from "./ExerciseAutocomplete";
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -119,9 +120,12 @@ export default function WorkoutPlanner() {
   };
 
   const addExercise = () => {
-    setDayConfig(prev => ({
+    setDayConfig((prev) => ({
       ...prev,
-      exercises: [...prev.exercises, { name: '', sets: 3, reps: 10 }],
+      exercises: [
+        ...prev.exercises,
+        { name: "", sets: 3, reps: 10, rest_seconds: 90 },
+      ],
     }));
   };
 
@@ -130,6 +134,19 @@ export default function WorkoutPlanner() {
       ...prev,
       exercises: prev.exercises.map((ex, i) =>
         i === index ? { ...ex, [field]: value } : ex
+      ),
+    }));
+  };
+
+  const updateExerciseWithLibrary = (
+    index: number,
+    name: string,
+    libraryId?: string
+  ) => {
+    setDayConfig((prev) => ({
+      ...prev,
+      exercises: prev.exercises.map((ex, i) =>
+        i === index ? { ...ex, name, exercise_library_id: libraryId } : ex
       ),
     }));
   };
@@ -212,7 +229,7 @@ export default function WorkoutPlanner() {
                 <button
                   onClick={() => {
                     setIsCreating(false);
-                    setNewPlanName('');
+                    setNewPlanName("");
                   }}
                   className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition"
                 >
@@ -223,20 +240,21 @@ export default function WorkoutPlanner() {
           )}
 
           <div className="space-y-2">
-            {plans.map(plan => (
+            {plans.map((plan) => (
               <div
                 key={plan.id}
                 className={`p-4 rounded-lg border ${
                   plan.is_active
-                    ? 'bg-blue-500/10 border-blue-500'
-                    : 'bg-slate-900 border-slate-700'
+                    ? "bg-blue-500/10 border-blue-500"
+                    : "bg-slate-900 border-slate-700"
                 }`}
               >
                 <div className="flex items-center justify-between">
                   <div>
                     <h4 className="text-white font-medium">{plan.name}</h4>
                     <p className="text-slate-400 text-sm">
-                      {new Date(plan.start_date).toLocaleDateString()} - {new Date(plan.end_date).toLocaleDateString()}
+                      {new Date(plan.start_date).toLocaleDateString()} -{" "}
+                      {new Date(plan.end_date).toLocaleDateString()}
                     </p>
                   </div>
                   <div className="flex gap-2">
@@ -265,12 +283,16 @@ export default function WorkoutPlanner() {
           <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
             <div className="flex items-center gap-3 mb-6">
               <Calendar className="w-6 h-6 text-blue-400" />
-              <h3 className="text-xl font-semibold text-white">Weekly Schedule: {activePlan.name}</h3>
+              <h3 className="text-xl font-semibold text-white">
+                Weekly Schedule: {activePlan.name}
+              </h3>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {DAYS.map((day, index) => {
-                const dayData = workoutDays.find(d => d.day_of_week === index);
+                const dayData = workoutDays.find(
+                  (d) => d.day_of_week === index
+                );
                 return (
                   <div
                     key={index}
@@ -290,18 +312,33 @@ export default function WorkoutPlanner() {
                         <div className="text-slate-400 text-sm">Rest Day</div>
                       ) : (
                         <div>
-                          <div className="text-cyan-400 font-medium mb-2">{dayData.workout_name}</div>
+                          <div className="text-cyan-400 font-medium mb-2">
+                            {dayData.workout_name}
+                          </div>
                           <div className="space-y-1">
                             {dayData.exercises.map((ex, i) => (
-                              <div key={i} className="text-slate-400 text-sm">
-                                {ex.name} - {ex.sets}x{ex.reps}
+                              <div
+                                key={i}
+                                className="flex items-center gap-1 text-slate-400 text-sm"
+                              >
+                                {ex.exercise_library_id && (
+                                  <div
+                                    className="w-1.5 h-1.5 bg-green-400 rounded-full flex-shrink-0"
+                                    title="From library"
+                                  ></div>
+                                )}
+                                <span>
+                                  {ex.name} - {ex.sets}x{ex.reps}
+                                </span>
                               </div>
                             ))}
                           </div>
                         </div>
                       )
                     ) : (
-                      <div className="text-slate-500 text-sm">Not configured</div>
+                      <div className="text-slate-500 text-sm">
+                        Not configured
+                      </div>
                     )}
                   </div>
                 );
@@ -324,7 +361,10 @@ export default function WorkoutPlanner() {
                   type="checkbox"
                   checked={dayConfig.isRestDay}
                   onChange={(e) =>
-                    setDayConfig(prev => ({ ...prev, isRestDay: e.target.checked }))
+                    setDayConfig((prev) => ({
+                      ...prev,
+                      isRestDay: e.target.checked,
+                    }))
                   }
                   className="w-4 h-4"
                 />
@@ -342,7 +382,10 @@ export default function WorkoutPlanner() {
                     type="text"
                     value={dayConfig.workoutName}
                     onChange={(e) =>
-                      setDayConfig(prev => ({ ...prev, workoutName: e.target.value }))
+                      setDayConfig((prev) => ({
+                        ...prev,
+                        workoutName: e.target.value,
+                      }))
                     }
                     placeholder="e.g., Chest & Triceps"
                     className="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white"
@@ -365,26 +408,51 @@ export default function WorkoutPlanner() {
 
                   <div className="space-y-3">
                     {dayConfig.exercises.map((exercise, i) => (
-                      <div key={i} className="bg-slate-900 p-3 rounded-lg">
-                        <div className="grid grid-cols-12 gap-2">
-                          <input
-                            type="text"
-                            value={exercise.name}
-                            onChange={(e) => updateExercise(i, 'name', e.target.value)}
-                            placeholder="Exercise name"
-                            className="col-span-6 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm"
-                          />
+                      <div
+                        key={i}
+                        className="bg-slate-900 p-3 rounded-lg space-y-2"
+                      >
+                        <div className="grid grid-cols-12 gap-2 items-center">
+                          <div className="col-span-6">
+                            <ExerciseAutocomplete
+                              value={exercise.name}
+                              onChange={(name, libraryId) =>
+                                updateExerciseWithLibrary(i, name, libraryId)
+                              }
+                              placeholder="Exercise name"
+                            />
+                            {exercise.exercise_library_id && (
+                              <div className="flex items-center gap-1 mt-1">
+                                <div className="w-1.5 h-1.5 bg-green-400 rounded-full"></div>
+                                <span className="text-xs text-green-400">
+                                  From library
+                                </span>
+                              </div>
+                            )}
+                          </div>
                           <input
                             type="number"
                             value={exercise.sets}
-                            onChange={(e) => updateExercise(i, 'sets', parseInt(e.target.value))}
+                            onChange={(e) =>
+                              updateExercise(
+                                i,
+                                "sets",
+                                parseInt(e.target.value)
+                              )
+                            }
                             placeholder="Sets"
                             className="col-span-2 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm"
                           />
                           <input
                             type="number"
                             value={exercise.reps}
-                            onChange={(e) => updateExercise(i, 'reps', parseInt(e.target.value))}
+                            onChange={(e) =>
+                              updateExercise(
+                                i,
+                                "reps",
+                                parseInt(e.target.value)
+                              )
+                            }
                             placeholder="Reps"
                             className="col-span-2 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm"
                           />
@@ -394,6 +462,27 @@ export default function WorkoutPlanner() {
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <label className="text-sm text-slate-400">
+                            Rest:
+                          </label>
+                          <input
+                            type="number"
+                            value={exercise.rest_seconds || 90}
+                            onChange={(e) =>
+                              updateExercise(
+                                i,
+                                "rest_seconds",
+                                parseInt(e.target.value)
+                              )
+                            }
+                            placeholder="90"
+                            className="w-20 px-3 py-1 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm"
+                          />
+                          <span className="text-sm text-slate-400">
+                            seconds between sets
+                          </span>
                         </div>
                       </div>
                     ))}

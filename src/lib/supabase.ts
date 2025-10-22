@@ -36,6 +36,8 @@ export type Exercise = {
   sets: number;
   reps: number;
   weight?: number;
+  rest_seconds?: number; // Rest time between sets in seconds (default: 90)
+  exercise_library_id?: string; // Link to exercise_library table
 };
 
 export type WorkoutDay = {
@@ -64,6 +66,18 @@ export type WeightLog = {
   user_id: string;
   log_date: string;
   weight: number;
-  unit: 'kg' | 'lbs';
+  unit: "kg" | "lbs";
   created_at: string;
+};
+
+export type ExerciseLibraryItem = {
+  id: string;
+  name: string;
+  description: string;
+  tags: string[];
+  media_url: string;
+  media_type: "gif" | "youtube" | "image";
+  created_by: string;
+  created_at: string;
+  updated_at: string;
 };
