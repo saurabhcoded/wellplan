@@ -121,7 +121,7 @@ function MainApp() {
       </main>
 
       {/* Bottom Navigation - Mobile */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-slate-800/95 backdrop-blur-sm border-t border-slate-700 z-50">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-slate-800/95 backdrop-blur-sm border-t border-slate-700 z-40">
         <div className="grid grid-cols-5 gap-1 px-2 py-3">
           <button
             onClick={() => setActiveTab("dashboard")}

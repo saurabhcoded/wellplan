@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Exercise, ExerciseLibraryItem } from '../lib/supabase';
+import { useState, useEffect, useRef } from "react";
+import { Exercise, ExerciseLibraryItem } from "../lib/supabase";
 import {
   X,
   Play,
@@ -10,7 +10,8 @@ import {
   CheckCircle,
   Timer,
   Dumbbell,
-} from 'lucide-react';
+  Info,
+} from "lucide-react";
 
 interface WorkoutSessionProps {
   exercises: Exercise[];
@@ -50,12 +51,32 @@ export default function WorkoutSession({
     new Set(initialCompletedExercises)
   );
   const [showCompletion, setShowCompletion] = useState(false);
+  const [showInstructions, setShowInstructions] = useState(false);
+  const instructionsRef = useRef<HTMLDivElement>(null);
 
   const currentExercise = exercises[currentExerciseIndex];
   const restDuration = currentExercise?.rest_seconds || 90;
   const libraryExercise = currentExercise?.exercise_library_id
     ? exerciseLibrary.get(currentExercise.exercise_library_id)
     : null;
+
+  // Close instructions when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        instructionsRef.current &&
+        !instructionsRef.current.contains(event.target as Node)
+      ) {
+        setShowInstructions(false);
+      }
+    };
+
+    if (showInstructions) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () =>
+        document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [showInstructions]);
 
   // Default cycling GIF (you can replace with your own URL)
   const defaultGif =
@@ -177,34 +198,79 @@ export default function WorkoutSession({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900 flex flex-col">
+    <div className="fixed inset-0 z-50 bg-slate-900 flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="bg-slate-800 border-b border-slate-700 px-4 py-3">
+      <div className="bg-slate-800 border-b border-slate-700 px-4 py-2 flex-shrink-0">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Dumbbell className="w-5 h-5 text-blue-400" />
             <div>
-              <h2 className="text-lg font-bold text-white">{workoutName}</h2>
-              <p className="text-sm text-slate-400">
+              <h2 className="text-base md:text-lg font-bold text-white">
+                {workoutName}
+              </h2>
+              <p className="text-xs md:text-sm text-slate-400">
                 Exercise {currentExerciseIndex + 1} of {exercises.length}
               </p>
             </div>
           </div>
-          <button
-            onClick={handleClose}
-            className="p-2 hover:bg-slate-700 rounded-lg transition text-slate-400 hover:text-white"
-          >
-            <X className="w-6 h-6" />
-          </button>
+          <div className="flex items-center gap-2 relative">
+            {/* Info icon - only show if there are instructions */}
+            {libraryExercise?.description && (
+              <div className="relative" ref={instructionsRef}>
+                <button
+                  onClick={() => setShowInstructions(!showInstructions)}
+                  className={`p-2 rounded-lg transition ${
+                    showInstructions
+                      ? "bg-blue-500 text-white"
+                      : "hover:bg-slate-700 text-slate-400 hover:text-white"
+                  }`}
+                  title="Instructions"
+                >
+                  <Info className="w-5 h-5" />
+                </button>
+
+                {/* Instructions Tooltip/Popper */}
+                {showInstructions && (
+                  <div className="absolute right-0 top-full mt-2 w-80 max-w-[90vw] bg-slate-800 border border-slate-600 rounded-lg shadow-2xl z-50 p-4 animate-in fade-in slide-in-from-top-2 duration-200">
+                    {/* Arrow */}
+                    <div className="absolute -top-2 right-3 w-4 h-4 bg-slate-800 border-t border-l border-slate-600 transform rotate-45"></div>
+
+                    <div className="relative">
+                      <h4 className="text-sm font-semibold text-slate-300 uppercase tracking-wide mb-3 flex items-center justify-between">
+                        <span>Instructions</span>
+                        <button
+                          onClick={() => setShowInstructions(false)}
+                          className="text-slate-400 hover:text-white transition"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </h4>
+                      <div className="max-h-64 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-slate-600 scrollbar-track-slate-800">
+                        <p className="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">
+                          {libraryExercise.description}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            <button
+              onClick={handleClose}
+              className="p-2 hover:bg-slate-700 rounded-lg transition text-slate-400 hover:text-white"
+            >
+              <X className="w-5 h-5 md:w-6 md:h-6" />
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Progress Bar */}
-      <div className="bg-slate-800 px-4 py-2">
+      <div className="bg-slate-800 px-4 py-1.5 flex-shrink-0">
         <div className="max-w-7xl mx-auto">
-          <div className="w-full bg-slate-700 rounded-full h-2">
+          <div className="w-full bg-slate-700 rounded-full h-1.5">
             <div
-              className="bg-gradient-to-r from-blue-500 to-cyan-500 h-2 rounded-full transition-all duration-300"
+              className="bg-gradient-to-r from-blue-500 to-cyan-500 h-1.5 rounded-full transition-all duration-300"
               style={{ width: `${progressPercentage}%` }}
             />
           </div>
@@ -212,55 +278,57 @@ export default function WorkoutSession({
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-5xl mx-auto px-4 py-8">
+      <div className="flex-1 overflow-y-auto flex flex-col">
+        <div className="max-w-5xl mx-auto px-4 py-4 md:py-6 flex-1 flex flex-col">
           {showCompletion ? (
             // Completion Screen
-            <div className="flex items-center justify-center min-h-[600px]">
-              <div className="text-center space-y-6 animate-pulse">
-                <div className="text-8xl mb-4">🎉</div>
-                <h2 className="text-5xl font-bold text-white mb-2">
+            <div className="flex items-center justify-center flex-1">
+              <div className="text-center space-y-4 animate-pulse">
+                <div className="text-6xl md:text-8xl mb-2 md:mb-4">🎉</div>
+                <h2 className="text-3xl md:text-5xl font-bold text-white mb-2">
                   Workout Complete!
                 </h2>
-                <p className="text-2xl text-cyan-400">
+                <p className="text-xl md:text-2xl text-cyan-400">
                   Great job on completing all exercises!
                 </p>
-                <div className="mt-8 text-slate-400">
+                <div className="mt-4 md:mt-8 text-slate-400">
                   Returning to dashboard...
                 </div>
               </div>
             </div>
           ) : phase === "exercise" ? (
             // Exercise Phase
-            <div className="space-y-6">
+            <div className="space-y-3 md:space-y-4 flex-1 flex flex-col">
               {/* Exercise Info */}
-              <div className="text-center">
-                <h3 className="text-4xl font-bold text-white mb-2">
+              <div className="text-center flex-shrink-0">
+                <h3 className="text-2xl md:text-4xl font-bold text-white mb-2">
                   {currentExercise.name}
                 </h3>
-                <div className="flex items-center justify-center gap-6 text-slate-400">
+                <div className="flex items-center justify-center gap-3 md:gap-6 text-slate-400 flex-wrap">
                   <div className="flex items-center gap-2">
-                    <span className="text-2xl font-bold text-cyan-400">
+                    <span className="text-xl md:text-2xl font-bold text-cyan-400">
                       {currentSet}
                     </span>
-                    <span className="text-lg">/ {currentExercise.sets}</span>
-                    <span>sets</span>
+                    <span className="text-sm md:text-lg">
+                      / {currentExercise.sets}
+                    </span>
+                    <span className="text-sm md:text-base">sets</span>
                   </div>
-                  <div className="w-1 h-8 bg-slate-700" />
+                  <div className="w-1 h-6 md:h-8 bg-slate-700" />
                   <div className="flex items-center gap-2">
-                    <span className="text-2xl font-bold text-cyan-400">
+                    <span className="text-xl md:text-2xl font-bold text-cyan-400">
                       {currentExercise.reps}
                     </span>
-                    <span>reps</span>
+                    <span className="text-sm md:text-base">reps</span>
                   </div>
                   {currentExercise.weight && (
                     <>
-                      <div className="w-1 h-8 bg-slate-700" />
+                      <div className="w-1 h-6 md:h-8 bg-slate-700" />
                       <div className="flex items-center gap-2">
-                        <span className="text-2xl font-bold text-cyan-400">
+                        <span className="text-xl md:text-2xl font-bold text-cyan-400">
                           {currentExercise.weight}
                         </span>
-                        <span>kg</span>
+                        <span className="text-sm md:text-base">kg</span>
                       </div>
                     </>
                   )}
@@ -268,8 +336,8 @@ export default function WorkoutSession({
               </div>
 
               {/* Media Display */}
-              <div className="bg-slate-800 rounded-2xl overflow-hidden border border-slate-700">
-                <div className="aspect-video bg-white-900 flex items-center justify-center">
+              <div className="bg-slate-800 rounded-lg md:rounded-2xl overflow-hidden border border-white flex-1 flex items-center justify-center max-h-[45vh] md:max-h-[55vh]">
+                <div className="w-full h-full bg-white flex items-center justify-center">
                   {getMediaType() === "youtube" ? (
                     <iframe
                       src={getMediaUrl()}
@@ -291,66 +359,54 @@ export default function WorkoutSession({
                 </div>
               </div>
 
-              {/* Exercise Description */}
-              {libraryExercise?.description && (
-                <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-                  <h4 className="text-sm font-semibold text-slate-400 uppercase tracking-wide mb-2">
-                    Instructions
-                  </h4>
-                  <p className="text-slate-300 leading-relaxed">
-                    {libraryExercise.description}
-                  </p>
-                </div>
-              )}
-
               {/* Action Buttons */}
-              <div className="flex gap-4 flex-col md:flex-row">
+              <div className="flex gap-2 md:gap-4 flex-col md:flex-row flex-shrink-0">
                 <button
                   onClick={handleSetComplete}
-                  className="flex-[2] flex items-center justify-center gap-3 px-6 py-4 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl hover:from-green-600 hover:to-emerald-600 transition font-semibold text-lg"
+                  className="flex-[2] flex items-center justify-center gap-2 md:gap-3 px-4 md:px-6 py-3 md:py-4 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg md:rounded-xl hover:from-green-600 hover:to-emerald-600 transition font-semibold text-base md:text-lg"
                 >
-                  <CheckCircle className="w-6 h-6" />
+                  <CheckCircle className="w-5 h-5 md:w-6 md:h-6" />
                   Complete Set
                 </button>
-                <div className="flex gap-4">
+                <div className="flex gap-2 md:gap-4">
                   <button
                     onClick={handlePreviousExercise}
                     disabled={currentExerciseIndex === 0}
-                    className="flex-1 flex items-center justify-center gap-2 px-6 py-4 bg-slate-800 border border-slate-700 text-slate-400 rounded-xl hover:bg-slate-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex-1 flex items-center justify-center gap-1 md:gap-2 px-3 md:px-6 py-3 md:py-4 bg-slate-800 border border-slate-700 text-slate-400 rounded-lg md:rounded-xl hover:bg-slate-700 transition disabled:opacity-50 disabled:cursor-not-allowed text-sm md:text-base"
                   >
-                    <ChevronLeft className="w-5 h-5" />
+                    <ChevronLeft className="w-4 h-4 md:w-5 md:h-5" />
                     Previous
                   </button>
 
                   <button
                     onClick={handleNextExercise}
                     disabled={currentExerciseIndex === exercises.length - 1}
-                    className="flex-1 flex items-center justify-center gap-2 px-6 py-4 bg-slate-800 border border-slate-700 text-slate-400 rounded-xl hover:bg-slate-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex-1 flex items-center justify-center gap-1 md:gap-2 px-3 md:px-6 py-3 md:py-4 bg-slate-800 border border-slate-700 text-slate-400 rounded-lg md:rounded-xl hover:bg-slate-700 transition disabled:opacity-50 disabled:cursor-not-allowed text-sm md:text-base"
                   >
                     Next
-                    <ChevronRight className="w-5 h-5" />
+                    <ChevronRight className="w-4 h-4 md:w-5 md:h-5" />
                   </button>
                 </div>
               </div>
             </div>
           ) : (
             // Rest Phase
-            <div className="flex items-center justify-center min-h-[600px]">
-              <div className="text-center space-y-8">
+            <div className="flex items-center justify-center flex-1">
+              <div className="text-center space-y-4 md:space-y-8">
                 <div>
-                  <div className="flex items-center justify-center gap-3 mb-4">
-                    <Timer className="w-12 h-12 text-blue-400" />
+                  <div className="flex items-center justify-center gap-3 mb-2 md:mb-4">
+                    <Timer className="w-8 h-8 md:w-12 md:h-12 text-blue-400" />
                   </div>
-                  <h3 className="text-3xl font-bold text-white mb-2">
+                  <h3 className="text-2xl md:text-3xl font-bold text-white mb-2">
                     Rest Time
                   </h3>
-                  <p className="text-slate-400 text-lg">
+                  <p className="text-slate-400 text-base md:text-lg">
                     Prepare for set {currentSet}
                   </p>
                 </div>
 
                 {/* Timer Display */}
-                <div className="relative w-64 h-64 mx-auto">
+                <div className="relative w-48 h-48 md:w-64 md:h-64 mx-auto">
                   <svg
                     className="w-full h-full transform -rotate-90"
                     viewBox="0 0 256 256"
@@ -383,45 +439,49 @@ export default function WorkoutSession({
                   </svg>
                   <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center">
                     <div className="text-center">
-                      <div className="text-6xl font-bold text-white mb-2">
+                      <div className="text-4xl md:text-6xl font-bold text-white mb-1 md:mb-2">
                         {formatTime(restTimeLeft)}
                       </div>
-                      <div className="text-slate-400">remaining</div>
+                      <div className="text-sm md:text-base text-slate-400">
+                        remaining
+                      </div>
                     </div>
                   </div>
                 </div>
 
                 {/* Rest Controls */}
-                <div className="flex items-center justify-center gap-4">
+                <div className="flex items-center justify-center gap-2 md:gap-4 flex-wrap">
                   <button
                     onClick={() => setIsPaused(!isPaused)}
-                    className="flex items-center justify-center gap-2 px-6 py-3 bg-slate-800 border border-slate-700 text-white rounded-xl hover:bg-slate-700 transition"
+                    className="flex items-center justify-center gap-2 px-4 md:px-6 py-2 md:py-3 bg-slate-800 border border-slate-700 text-white rounded-lg md:rounded-xl hover:bg-slate-700 transition text-sm md:text-base"
                   >
                     {isPaused ? (
                       <>
-                        <Play className="w-5 h-5" />
+                        <Play className="w-4 h-4 md:w-5 md:h-5" />
                         Resume
                       </>
                     ) : (
                       <>
-                        <Pause className="w-5 h-5" />
+                        <Pause className="w-4 h-4 md:w-5 md:h-5" />
                         Pause
                       </>
                     )}
                   </button>
                   <button
                     onClick={handleSkipRest}
-                    className="flex items-center justify-center gap-2 px-6 py-3 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition"
+                    className="flex items-center justify-center gap-2 px-4 md:px-6 py-2 md:py-3 bg-blue-500 text-white rounded-lg md:rounded-xl hover:bg-blue-600 transition text-sm md:text-base"
                   >
-                    <SkipForward className="w-5 h-5" />
+                    <SkipForward className="w-4 h-4 md:w-5 md:h-5" />
                     Skip Rest
                   </button>
                 </div>
 
                 {/* Next Exercise Preview */}
-                <div className="bg-slate-800 rounded-xl p-4 border border-slate-700 max-w-md mx-auto">
-                  <p className="text-sm text-slate-400 mb-1">Up Next</p>
-                  <p className="text-white font-semibold">
+                <div className="bg-slate-800 rounded-lg md:rounded-xl p-3 md:p-4 border border-slate-700 max-w-md mx-auto">
+                  <p className="text-xs md:text-sm text-slate-400 mb-1">
+                    Up Next
+                  </p>
+                  <p className="text-sm md:text-base text-white font-semibold">
                     {currentExercise.name} - Set {currentSet} of{" "}
                     {currentExercise.sets}
                   </p>
@@ -433,9 +493,9 @@ export default function WorkoutSession({
       </div>
 
       {/* Exercise List Sidebar (Bottom on mobile) */}
-      <div className="bg-slate-800 border-t border-slate-700 px-4 py-3">
+      <div className="bg-slate-800 border-t border-slate-700 px-2 md:px-4 py-2 md:py-3 flex-shrink-0">
         <div className="max-w-7xl mx-auto">
-          <div className="flex gap-2 overflow-x-auto pb-2">
+          <div className="flex gap-1.5 md:gap-2 overflow-x-auto pb-1 md:pb-2 scrollbar-hide">
             {exercises.map((ex, idx) => {
               const isActive = idx === currentExerciseIndex;
               const isCompleted = completedExercises.has(ex.name);
@@ -449,7 +509,7 @@ export default function WorkoutSession({
                     setPhase("exercise");
                     setRestTimeLeft(0);
                   }}
-                  className={`flex-shrink-0 px-4 py-2 rounded-lg text-sm font-medium transition ${
+                  className={`flex-shrink-0 px-3 md:px-4 py-1.5 md:py-2 rounded-md md:rounded-lg text-xs md:text-sm font-medium transition ${
                     isActive
                       ? "bg-blue-500 text-white"
                       : isCompleted
@@ -457,8 +517,10 @@ export default function WorkoutSession({
                       : "bg-slate-700 text-slate-400 hover:bg-slate-600"
                   }`}
                 >
-                  {idx + 1}. {ex.name}
-                  {isCompleted && " ✓"}
+                  <span className="truncate max-w-[120px] md:max-w-none">
+                    {idx + 1}. {ex.name}
+                    {isCompleted && " ✓"}
+                  </span>
                 </button>
               );
             })}
@@ -468,4 +530,3 @@ export default function WorkoutSession({
     </div>
   );
 }
-
