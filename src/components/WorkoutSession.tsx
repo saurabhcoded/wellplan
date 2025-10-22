@@ -12,6 +12,7 @@ import {
   Dumbbell,
   Info,
 } from "lucide-react";
+import { getYouTubeEmbedUrl } from "../lib/utils";
 
 interface WorkoutSessionProps {
   exercises: Exercise[];
@@ -279,7 +280,7 @@ export default function WorkoutSession({
 
       {/* Main Content */}
       <div className="flex-1 overflow-y-auto flex flex-col">
-        <div className="max-w-5xl mx-auto px-4 py-4 md:py-6 flex-1 flex flex-col">
+        <div className="w-full md:max-w-5xl mx-auto px-4 py-4 md:py-6 flex-1 flex flex-col">
           {showCompletion ? (
             // Completion Screen
             <div className="flex items-center justify-center flex-1">
@@ -340,11 +341,16 @@ export default function WorkoutSession({
                 <div className="w-full h-full bg-white flex items-center justify-center">
                   {getMediaType() === "youtube" ? (
                     <iframe
-                      src={getMediaUrl()}
-                      className="w-full h-full"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      width="560"
+                      height="315"
+                      src={getYouTubeEmbedUrl(getMediaUrl())}
+                      title="YouTube video player"
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      referrerPolicy="strict-origin-when-cross-origin"
                       allowFullScreen
-                    />
+                      className="w-full h-full"
+                    ></iframe>
                   ) : (
                     <img
                       src={getMediaUrl()}
