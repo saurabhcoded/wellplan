@@ -51,7 +51,6 @@ export default function WorkoutSession({
   const [completedExercises, setCompletedExercises] = useState<Set<string>>(
     new Set(initialCompletedExercises)
   );
-  const [showCompletion, setShowCompletion] = useState(false);
   const [showInstructions, setShowInstructions] = useState(false);
   const instructionsRef = useRef<HTMLDivElement>(null);
 
@@ -144,11 +143,9 @@ export default function WorkoutSession({
         setCurrentSet(1);
         setPhase("exercise");
       } else {
-        // All exercises complete! Show completion screen
-        setShowCompletion(true);
-        setTimeout(() => {
-          onClose();
-        }, 3000); // Give user 3 seconds to see completion
+        // All exercises complete! Reset and close to restart from beginning
+        onComplete([]); // Clear completed exercises so workout restarts fresh
+        onClose(); // Close the session dialog
       }
     }
   };
@@ -281,23 +278,7 @@ export default function WorkoutSession({
       {/* Main Content */}
       <div className="flex-1 overflow-y-auto flex flex-col">
         <div className="w-full md:max-w-5xl mx-auto px-4 py-4 md:py-6 flex-1 flex flex-col">
-          {showCompletion ? (
-            // Completion Screen
-            <div className="flex items-center justify-center flex-1">
-              <div className="text-center space-y-4 animate-pulse">
-                <div className="text-6xl md:text-8xl mb-2 md:mb-4">🎉</div>
-                <h2 className="text-3xl md:text-5xl font-bold text-white mb-2">
-                  Workout Complete!
-                </h2>
-                <p className="text-xl md:text-2xl text-cyan-400">
-                  Great job on completing all exercises!
-                </p>
-                <div className="mt-4 md:mt-8 text-slate-400">
-                  Returning to dashboard...
-                </div>
-              </div>
-            </div>
-          ) : phase === "exercise" ? (
+          {phase === "exercise" ? (
             // Exercise Phase
             <div className="space-y-3 md:space-y-4 flex-1 flex flex-col">
               {/* Exercise Info */}
