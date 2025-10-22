@@ -1,17 +1,24 @@
-import { useState } from 'react';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-import Auth from './components/Auth';
-import DailyTracker from './components/DailyTracker';
-import WorkoutPlanner from './components/WorkoutPlanner';
-import ProgressCharts from './components/ProgressCharts';
-import Account from './components/Account';
-import { Dumbbell, Home, Calendar, TrendingUp, User } from 'lucide-react';
+import { useState, useEffect } from "react";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import Auth from "./components/Auth";
+import DailyTracker from "./components/DailyTracker";
+import WorkoutPlanner from "./components/WorkoutPlanner";
+import ProgressCharts from "./components/ProgressCharts";
+import Account from "./components/Account";
+import { Dumbbell, Home, Calendar, TrendingUp, User } from "lucide-react";
 
-type Tab = 'dashboard' | 'planner' | 'progress' | 'account';
+type Tab = "dashboard" | "planner" | "progress" | "account";
 
 function MainApp() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<Tab>('dashboard');
+  const [activeTab, setActiveTab] = useState<Tab>("dashboard");
+
+  // Reset to dashboard whenever user logs in
+  useEffect(() => {
+    if (user) {
+      setActiveTab("dashboard");
+    }
+  }, [user?.id]); // Only trigger when user ID changes (login/logout)
 
   if (!user) {
     return <Auth />;

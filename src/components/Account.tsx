@@ -34,25 +34,54 @@ export default function Account() {
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from('profiles')
-        .select('full_name, age, height_cm, body_fat_percentage, gender')
-        .eq('id', user!.id)
-        .single();
+        .from("profiles")
+        .select("full_name, age, height_cm, body_fat_percentage, gender")
+        .eq("id", user!.id)
+        .maybeSingle();
 
-      if (error) throw error;
+      // If profile doesn't exist, create it
+      if (!data && !error) {
+        console.log("Profile not found, creating new profile...");
+        const { error: insertError } = await supabase.from("profiles").insert({
+          id: user!.id,
+          email: user!.email || "",
+          full_name: user!.user_metadata?.full_name || "",
+          age: user!.user_metadata?.age || null,
+          height_cm: user!.user_metadata?.height_cm || null,
+          body_fat_percentage: user!.user_metadata?.body_fat_percentage || null,
+          gender: user!.user_metadata?.gender || null,
+        });
 
-      if (data) {
+        if (insertError) {
+          console.error("Error creating profile:", insertError);
+          throw insertError;
+        }
+
+        // Set metrics from user metadata
+        setMetrics({
+          age: user!.user_metadata?.age || null,
+          height_cm: user!.user_metadata?.height_cm || null,
+          body_fat_percentage: user!.user_metadata?.body_fat_percentage || null,
+          gender: user!.user_metadata?.gender || null,
+          full_name: user!.user_metadata?.full_name || "",
+        });
+      } else if (error) {
+        throw error;
+      } else if (data) {
         setMetrics({
           age: data.age,
           height_cm: data.height_cm,
           body_fat_percentage: data.body_fat_percentage,
           gender: data.gender,
-          full_name: data.full_name || '',
+          full_name: data.full_name || "",
         });
       }
     } catch (error) {
-      console.error('Error loading profile:', error);
-      setMessage({ type: 'error', text: 'Failed to load profile data' });
+      console.error("Error loading profile:", error);
+      setMessage({
+        type: "error",
+        text: "Failed to load profile data. Please try refreshing the page.",
+      });
     } finally {
       setLoading(false);
     }
@@ -65,7 +94,7 @@ export default function Account() {
 
     try {
       const { error } = await supabase
-        .from('profiles')
+        .from("profiles")
         .update({
           full_name: metrics.full_name,
           age: metrics.age,
@@ -74,15 +103,15 @@ export default function Account() {
           gender: metrics.gender,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', user!.id);
+        .eq("id", user!.id);
 
       if (error) throw error;
 
-      setMessage({ type: 'success', text: 'Profile updated successfully!' });
+      setMessage({ type: "success", text: "Profile updated successfully!" });
       setTimeout(() => setMessage(null), 3000);
     } catch (error) {
-      console.error('Error updating profile:', error);
-      setMessage({ type: 'error', text: 'Failed to update profile' });
+      console.error("Error updating profile:", error);
+      setMessage({ type: "error", text: "Failed to update profile" });
     } finally {
       setSaving(false);
     }
@@ -110,7 +139,9 @@ export default function Account() {
               <User className="w-8 h-8 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-white">Account Settings</h1>
+              <h1 className="text-2xl font-bold text-white">
+                Account Settings
+              </h1>
               <p className="text-blue-100 text-sm">{user?.email}</p>
             </div>
           </div>
@@ -121,9 +152,9 @@ export default function Account() {
           <div className="mx-6 mt-6">
             <div
               className={`p-4 rounded-lg border ${
-                message.type === 'success'
-                  ? 'bg-green-500/10 border-green-500/50 text-green-400'
-                  : 'bg-red-500/10 border-red-500/50 text-red-400'
+                message.type === "success"
+                  ? "bg-green-500/10 border-green-500/50 text-green-400"
+                  : "bg-red-500/10 border-red-500/50 text-red-400"
               }`}
             >
               {message.text}
@@ -135,31 +166,46 @@ export default function Account() {
         <form onSubmit={handleSave} className="p-6 space-y-6">
           {/* Personal Information */}
           <div>
-            <h2 className="text-lg font-semibold text-white mb-4">Personal Information</h2>
+            <h2 className="text-lg font-semibold text-white mb-4">
+              Personal Information
+            </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label htmlFor="full_name" className="block text-sm font-medium text-slate-300 mb-2">
+                <label
+                  htmlFor="full_name"
+                  className="block text-sm font-medium text-slate-300 mb-2"
+                >
                   Full Name
                 </label>
                 <input
                   id="full_name"
                   type="text"
                   value={metrics.full_name}
-                  onChange={(e) => setMetrics({ ...metrics, full_name: e.target.value })}
+                  onChange={(e) =>
+                    setMetrics({ ...metrics, full_name: e.target.value })
+                  }
                   className="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                   placeholder="John Doe"
                 />
               </div>
 
               <div>
-                <label htmlFor="age" className="block text-sm font-medium text-slate-300 mb-2">
+                <label
+                  htmlFor="age"
+                  className="block text-sm font-medium text-slate-300 mb-2"
+                >
                   Age
                 </label>
                 <input
                   id="age"
                   type="number"
-                  value={metrics.age || ''}
-                  onChange={(e) => setMetrics({ ...metrics, age: e.target.value ? parseInt(e.target.value) : null })}
+                  value={metrics.age || ""}
+                  onChange={(e) =>
+                    setMetrics({
+                      ...metrics,
+                      age: e.target.value ? parseInt(e.target.value) : null,
+                    })
+                  }
                   className="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                   placeholder="25"
                   min="10"
@@ -168,14 +214,19 @@ export default function Account() {
               </div>
 
               <div>
-                <label htmlFor="gender" className="block text-sm font-medium text-slate-300 mb-2">
+                <label
+                  htmlFor="gender"
+                  className="block text-sm font-medium text-slate-300 mb-2"
+                >
                   Gender
                 </label>
                 <select
                   id="gender"
-                  value={metrics.gender || ''}
-                  onChange={(e) => setMetrics({ ...metrics, gender: e.target.value || null })}
-                  className="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                  value={metrics.gender || ""}
+                  onChange={(e) =>
+                    setMetrics({ ...metrics, gender: e.target.value || null })
+                  }
+                  className="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition appearance-none cursor-pointer"
                 >
                   <option value="">Select gender</option>
                   <option value="male">Male</option>
@@ -189,18 +240,30 @@ export default function Account() {
 
           {/* Health Metrics */}
           <div>
-            <h2 className="text-lg font-semibold text-white mb-4">Health Metrics</h2>
+            <h2 className="text-lg font-semibold text-white mb-4">
+              Health Metrics
+            </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label htmlFor="height_cm" className="block text-sm font-medium text-slate-300 mb-2">
+                <label
+                  htmlFor="height_cm"
+                  className="block text-sm font-medium text-slate-300 mb-2"
+                >
                   Height (cm)
                 </label>
                 <input
                   id="height_cm"
                   type="number"
                   step="0.01"
-                  value={metrics.height_cm || ''}
-                  onChange={(e) => setMetrics({ ...metrics, height_cm: e.target.value ? parseFloat(e.target.value) : null })}
+                  value={metrics.height_cm || ""}
+                  onChange={(e) =>
+                    setMetrics({
+                      ...metrics,
+                      height_cm: e.target.value
+                        ? parseFloat(e.target.value)
+                        : null,
+                    })
+                  }
                   className="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                   placeholder="175.5"
                   min="50"
@@ -209,15 +272,25 @@ export default function Account() {
               </div>
 
               <div>
-                <label htmlFor="body_fat_percentage" className="block text-sm font-medium text-slate-300 mb-2">
+                <label
+                  htmlFor="body_fat_percentage"
+                  className="block text-sm font-medium text-slate-300 mb-2"
+                >
                   Body Fat Percentage (%)
                 </label>
                 <input
                   id="body_fat_percentage"
                   type="number"
                   step="0.01"
-                  value={metrics.body_fat_percentage || ''}
-                  onChange={(e) => setMetrics({ ...metrics, body_fat_percentage: e.target.value ? parseFloat(e.target.value) : null })}
+                  value={metrics.body_fat_percentage || ""}
+                  onChange={(e) =>
+                    setMetrics({
+                      ...metrics,
+                      body_fat_percentage: e.target.value
+                        ? parseFloat(e.target.value)
+                        : null,
+                    })
+                  }
                   className="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                   placeholder="15.5"
                   min="2"
@@ -228,7 +301,9 @@ export default function Account() {
 
             <div className="mt-4 p-4 bg-slate-900 rounded-lg border border-slate-700">
               <p className="text-sm text-slate-400">
-                <strong className="text-slate-300">Note:</strong> These metrics help us provide better personalized recommendations for your fitness journey. All fields are optional.
+                <strong className="text-slate-300">Note:</strong> These metrics
+                help us provide better personalized recommendations for your
+                fitness journey. All fields are optional.
               </p>
             </div>
           </div>
