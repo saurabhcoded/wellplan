@@ -380,7 +380,7 @@ export default function Home() {
               <ul className="space-y-3">
                 <li>
                   <a
-                    href="mailto:support@wellplan.com"
+                    href="mailto:saurabhcoded@gmail.com"
                     className="text-slate-400 hover:text-cyan-400 transition-colors text-sm flex items-center gap-2 group"
                   >
                     <ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 -ml-5 group-hover:ml-0 transition-all" />

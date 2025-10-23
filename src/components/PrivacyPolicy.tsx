@@ -35,20 +35,29 @@ export default function PrivacyPolicy() {
 
           <div className="space-y-8 text-slate-300">
             <section>
-              <h2 className="text-2xl font-semibold text-white mb-4">1. Introduction</h2>
+              <h2 className="text-2xl font-semibold text-white mb-4">
+                1. Introduction
+              </h2>
               <p className="mb-4">
-                Welcome to WellPlan. We respect your privacy and are committed to protecting your personal data. 
-                This privacy policy will inform you about how we look after your personal data when you visit our 
-                application and tell you about your privacy rights.
+                Welcome to WellPlan. We respect your privacy and are committed
+                to protecting your personal data. This privacy policy will
+                inform you about how we look after your personal data when you
+                visit our application and tell you about your privacy rights.
               </p>
             </section>
 
             <section>
-              <h2 className="text-2xl font-semibold text-white mb-4">2. Information We Collect</h2>
-              <p className="mb-4">We collect and process the following types of information:</p>
+              <h2 className="text-2xl font-semibold text-white mb-4">
+                2. Information We Collect
+              </h2>
+              <p className="mb-4">
+                We collect and process the following types of information:
+              </p>
               <ul className="list-disc list-inside space-y-2 ml-4">
                 <li>Account information (email, name)</li>
-                <li>Health metrics (age, height, weight, body fat percentage)</li>
+                <li>
+                  Health metrics (age, height, weight, body fat percentage)
+                </li>
                 <li>Workout data (exercises, sets, reps, weights)</li>
                 <li>Progress tracking information</li>
                 <li>Usage data and analytics</li>
@@ -56,7 +65,9 @@ export default function PrivacyPolicy() {
             </section>
 
             <section>
-              <h2 className="text-2xl font-semibold text-white mb-4">3. How We Use Your Information</h2>
+              <h2 className="text-2xl font-semibold text-white mb-4">
+                3. How We Use Your Information
+              </h2>
               <p className="mb-4">We use your information to:</p>
               <ul className="list-disc list-inside space-y-2 ml-4">
                 <li>Provide and maintain our fitness tracking service</li>
@@ -68,25 +79,33 @@ export default function PrivacyPolicy() {
             </section>
 
             <section>
-              <h2 className="text-2xl font-semibold text-white mb-4">4. Data Security</h2>
+              <h2 className="text-2xl font-semibold text-white mb-4">
+                4. Data Security
+              </h2>
               <p className="mb-4">
-                We implement appropriate technical and organizational security measures to protect your personal 
-                data against unauthorized or unlawful processing, accidental loss, destruction, or damage. All data 
-                is encrypted in transit and at rest.
+                We implement appropriate technical and organizational security
+                measures to protect your personal data against unauthorized or
+                unlawful processing, accidental loss, destruction, or damage.
+                All data is encrypted in transit and at rest.
               </p>
             </section>
 
             <section>
-              <h2 className="text-2xl font-semibold text-white mb-4">5. Data Sharing</h2>
+              <h2 className="text-2xl font-semibold text-white mb-4">
+                5. Data Sharing
+              </h2>
               <p className="mb-4">
-                We do not sell, trade, or rent your personal information to third parties. We may share your 
-                information with service providers who assist us in operating our application, provided they 
-                agree to keep this information confidential.
+                We do not sell, trade, or rent your personal information to
+                third parties. We may share your information with service
+                providers who assist us in operating our application, provided
+                they agree to keep this information confidential.
               </p>
             </section>
 
             <section>
-              <h2 className="text-2xl font-semibold text-white mb-4">6. Your Rights</h2>
+              <h2 className="text-2xl font-semibold text-white mb-4">
+                6. Your Rights
+              </h2>
               <p className="mb-4">You have the right to:</p>
               <ul className="list-disc list-inside space-y-2 ml-4">
                 <li>Access your personal data</li>
@@ -99,37 +118,49 @@ export default function PrivacyPolicy() {
             </section>
 
             <section>
-              <h2 className="text-2xl font-semibold text-white mb-4">7. Cookies and Tracking</h2>
+              <h2 className="text-2xl font-semibold text-white mb-4">
+                7. Cookies and Tracking
+              </h2>
               <p className="mb-4">
-                We use cookies and similar tracking technologies to track activity on our service and hold certain 
-                information. You can instruct your browser to refuse all cookies or to indicate when a cookie is 
-                being sent.
+                We use cookies and similar tracking technologies to track
+                activity on our service and hold certain information. You can
+                instruct your browser to refuse all cookies or to indicate when
+                a cookie is being sent.
               </p>
             </section>
 
             <section>
-              <h2 className="text-2xl font-semibold text-white mb-4">8. Children's Privacy</h2>
+              <h2 className="text-2xl font-semibold text-white mb-4">
+                8. Children's Privacy
+              </h2>
               <p className="mb-4">
-                Our service is not intended for children under the age of 13. We do not knowingly collect personal 
-                information from children under 13. If you are a parent or guardian and believe your child has 
-                provided us with personal information, please contact us.
+                Our service is not intended for children under the age of 13. We
+                do not knowingly collect personal information from children
+                under 13. If you are a parent or guardian and believe your child
+                has provided us with personal information, please contact us.
               </p>
             </section>
 
             <section>
-              <h2 className="text-2xl font-semibold text-white mb-4">9. Changes to This Policy</h2>
+              <h2 className="text-2xl font-semibold text-white mb-4">
+                9. Changes to This Policy
+              </h2>
               <p className="mb-4">
-                We may update our Privacy Policy from time to time. We will notify you of any changes by posting 
-                the new Privacy Policy on this page and updating the "Last updated" date.
+                We may update our Privacy Policy from time to time. We will
+                notify you of any changes by posting the new Privacy Policy on
+                this page and updating the "Last updated" date.
               </p>
             </section>
 
             <section>
-              <h2 className="text-2xl font-semibold text-white mb-4">10. Contact Us</h2>
+              <h2 className="text-2xl font-semibold text-white mb-4">
+                10. Contact Us
+              </h2>
               <p className="mb-4">
-                If you have any questions about this Privacy Policy, please contact us at:
+                If you have any questions about this Privacy Policy, please
+                contact us at:
               </p>
-              <p className="text-blue-400">support@wellplan.com</p>
+              <p className="text-blue-400">saurabhcoded@gmail.com</p>
             </section>
           </div>
         </div>
