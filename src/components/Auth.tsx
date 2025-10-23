@@ -1,21 +1,30 @@
-import { useState } from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import { Dumbbell } from 'lucide-react';
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
+import { Dumbbell } from "lucide-react";
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [fullName, setFullName] = useState('');
-  const [age, setAge] = useState('');
-  const [heightCm, setHeightCm] = useState('');
-  const [bodyFatPercentage, setBodyFatPercentage] = useState('');
-  const [gender, setGender] = useState('');
-  const [error, setError] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [age, setAge] = useState("");
+  const [heightCm, setHeightCm] = useState("");
+  const [bodyFatPercentage, setBodyFatPercentage] = useState("");
+  const [gender, setGender] = useState("");
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [signupSuccess, setSignupSuccess] = useState(false);
 
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, user } = useAuth();
+  const navigate = useNavigate();
+
+  // Redirect to home if already logged in
+  useEffect(() => {
+    if (user) {
+      navigate("/", { replace: true });
+    }
+  }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
