@@ -350,158 +350,162 @@ export default function WorkoutPlanner() {
 
       {editingDay !== null && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-slate-800 rounded-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-slate-700">
-            <h3 className="text-xl font-bold text-white mb-4">
-              Configure {DAYS[editingDay]}
-            </h3>
+          <div className="bg-slate-800 rounded-xl max-w-2xl w-full max-h-[90vh] border border-slate-700 flex flex-col overflow-hidden">
+            {/* Scrollable Content Area */}
+            <div className="overflow-y-auto flex-1 p-6 pb-24">
+              <h3 className="text-xl font-bold text-white mb-4">
+                Configure {DAYS[editingDay]}
+              </h3>
 
-            <div className="mb-4">
-              <label className="flex items-center gap-2 text-white">
-                <input
-                  type="checkbox"
-                  checked={dayConfig.isRestDay}
-                  onChange={(e) =>
-                    setDayConfig((prev) => ({
-                      ...prev,
-                      isRestDay: e.target.checked,
-                    }))
-                  }
-                  className="w-4 h-4"
-                />
-                Rest Day
-              </label>
-            </div>
-
-            {!dayConfig.isRestDay && (
-              <>
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-slate-300 mb-2">
-                    Workout Name
-                  </label>
+              <div className="mb-4">
+                <label className="flex items-center gap-2 text-white">
                   <input
-                    type="text"
-                    value={dayConfig.workoutName}
+                    type="checkbox"
+                    checked={dayConfig.isRestDay}
                     onChange={(e) =>
                       setDayConfig((prev) => ({
                         ...prev,
-                        workoutName: e.target.value,
+                        isRestDay: e.target.checked,
                       }))
                     }
-                    placeholder="e.g., Chest & Triceps"
-                    className="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white"
+                    className="w-4 h-4"
                   />
-                </div>
+                  Rest Day
+                </label>
+              </div>
 
-                <div className="mb-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <label className="block text-sm font-medium text-slate-300">
-                      Exercises
+              {!dayConfig.isRestDay && (
+                <>
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                      Workout Name
                     </label>
-                    <button
-                      onClick={addExercise}
-                      className="flex items-center gap-1 px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded-lg transition"
-                    >
-                      <Plus className="w-4 h-4" />
-                      Add Exercise
-                    </button>
+                    <input
+                      type="text"
+                      value={dayConfig.workoutName}
+                      onChange={(e) =>
+                        setDayConfig((prev) => ({
+                          ...prev,
+                          workoutName: e.target.value,
+                        }))
+                      }
+                      placeholder="e.g., Chest & Triceps"
+                      className="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white"
+                    />
                   </div>
 
-                  <div className="space-y-3">
-                    {dayConfig.exercises.map((exercise, i) => (
-                      <div
-                        key={i}
-                        className="bg-slate-900 p-3 rounded-lg space-y-2"
+                  <div className="mb-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <label className="block text-sm font-medium text-slate-300">
+                        Exercises
+                      </label>
+                      <button
+                        onClick={addExercise}
+                        className="flex items-center gap-1 px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded-lg transition"
                       >
-                        {exercise.exercise_library_id && (
-                          <div className="flex items-center gap-1 mt-1">
-                            <div className="w-1.5 h-1.5 bg-green-400 rounded-full"></div>
-                            <span className="text-xs text-green-400">
-                              From library
+                        <Plus className="w-4 h-4" />
+                        Add Exercise
+                      </button>
+                    </div>
+
+                    <div className="space-y-3">
+                      {dayConfig.exercises.map((exercise, i) => (
+                        <div
+                          key={i}
+                          className="bg-slate-900 p-3 rounded-lg space-y-2"
+                        >
+                          {exercise.exercise_library_id && (
+                            <div className="flex items-center gap-1 mt-1">
+                              <div className="w-1.5 h-1.5 bg-green-400 rounded-full"></div>
+                              <span className="text-xs text-green-400">
+                                From library
+                              </span>
+                            </div>
+                          )}
+                          <div className="grid grid-cols-12 gap-2 items-center">
+                            <div className="col-span-6">
+                              <ExerciseAutocomplete
+                                value={exercise.name}
+                                onChange={(name, libraryId) =>
+                                  updateExerciseWithLibrary(i, name, libraryId)
+                                }
+                                placeholder="Exercise name"
+                              />
+                            </div>
+                            <input
+                              type="number"
+                              value={exercise.sets}
+                              onChange={(e) =>
+                                updateExercise(
+                                  i,
+                                  "sets",
+                                  parseInt(e.target.value)
+                                )
+                              }
+                              placeholder="Sets"
+                              className="col-span-2 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm"
+                            />
+                            <input
+                              type="number"
+                              value={exercise.reps}
+                              onChange={(e) =>
+                                updateExercise(
+                                  i,
+                                  "reps",
+                                  parseInt(e.target.value)
+                                )
+                              }
+                              placeholder="Reps"
+                              className="col-span-2 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm"
+                            />
+                            <button
+                              onClick={() => removeExercise(i)}
+                              className="col-span-2 p-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <label className="text-sm text-slate-400">
+                              Rest:
+                            </label>
+                            <input
+                              type="number"
+                              value={exercise.rest_seconds || 90}
+                              onChange={(e) =>
+                                updateExercise(
+                                  i,
+                                  "rest_seconds",
+                                  parseInt(e.target.value)
+                                )
+                              }
+                              placeholder="90"
+                              className="w-20 px-3 py-1 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm"
+                            />
+                            <span className="text-sm text-slate-400">
+                              seconds between sets
                             </span>
                           </div>
-                        )}
-                        <div className="grid grid-cols-12 gap-2 items-center">
-                          <div className="col-span-6">
-                            <ExerciseAutocomplete
-                              value={exercise.name}
-                              onChange={(name, libraryId) =>
-                                updateExerciseWithLibrary(i, name, libraryId)
-                              }
-                              placeholder="Exercise name"
-                            />
-                          </div>
-                          <input
-                            type="number"
-                            value={exercise.sets}
-                            onChange={(e) =>
-                              updateExercise(
-                                i,
-                                "sets",
-                                parseInt(e.target.value)
-                              )
-                            }
-                            placeholder="Sets"
-                            className="col-span-2 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm"
-                          />
-                          <input
-                            type="number"
-                            value={exercise.reps}
-                            onChange={(e) =>
-                              updateExercise(
-                                i,
-                                "reps",
-                                parseInt(e.target.value)
-                              )
-                            }
-                            placeholder="Reps"
-                            className="col-span-2 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm"
-                          />
-                          <button
-                            onClick={() => removeExercise(i)}
-                            className="col-span-2 p-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <label className="text-sm text-slate-400">
-                            Rest:
-                          </label>
-                          <input
-                            type="number"
-                            value={exercise.rest_seconds || 90}
-                            onChange={(e) =>
-                              updateExercise(
-                                i,
-                                "rest_seconds",
-                                parseInt(e.target.value)
-                              )
-                            }
-                            placeholder="90"
-                            className="w-20 px-3 py-1 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm"
-                          />
-                          <span className="text-sm text-slate-400">
-                            seconds between sets
-                          </span>
-                        </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
-              </>
-            )}
+                </>
+              )}
+            </div>
 
-            <div className="flex gap-2">
+            {/* Sticky Button Bar */}
+            <div className="sticky bottom-0 left-0 right-0 bg-slate-800/95 backdrop-blur-sm border-t border-slate-700 p-4 flex gap-2">
               <button
                 onClick={saveDayConfig}
-                className="flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition"
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg transition font-semibold"
               >
                 <Save className="w-4 h-4" />
                 Save
               </button>
               <button
                 onClick={() => setEditingDay(null)}
-                className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition"
+                className="flex-1 px-4 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition font-semibold"
               >
                 Cancel
               </button>
