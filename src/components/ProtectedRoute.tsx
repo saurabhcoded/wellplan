@@ -1,6 +1,7 @@
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import LoadingSpinner from "./LoadingSpinner";
+import { isMobileDevice } from "../lib/utils";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -14,7 +15,9 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   }
 
   if (!user) {
-    return <Navigate to="/login" replace />;
+    // Redirect to /home for desktop, /login for mobile
+    const redirectPath = isMobileDevice() ? "/login" : "/home";
+    return <Navigate to={redirectPath} replace />;
   }
 
   return <>{children}</>;

@@ -1,9 +1,13 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
+import Home from "./components/Home";
 import Login from "./components/Login";
 import Signup from "./components/Signup";
 import ForgotPassword from "./components/ForgotPassword";
 import ResetPassword from "./components/ResetPassword";
+import PrivacyPolicy from "./components/PrivacyPolicy";
+import TermsConditions from "./components/TermsConditions";
+import AccountDeletionPolicy from "./components/AccountDeletionPolicy";
 import DailyTracker from "./components/DailyTracker";
 import WorkoutPlanner from "./components/WorkoutPlanner";
 import ProgressCharts from "./components/ProgressCharts";
@@ -17,6 +21,15 @@ function App() {
     <AuthProvider>
       <BrowserRouter>
         <Routes>
+          {/* Public landing and info pages */}
+          <Route path="/home" element={<Home />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+          <Route path="/terms-conditions" element={<TermsConditions />} />
+          <Route
+            path="/account-deletion-policy"
+            element={<AccountDeletionPolicy />}
+          />
+
           {/* Public auth routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
@@ -28,7 +41,7 @@ function App() {
 
           {/* Protected routes with Layout */}
           <Route
-            path="/"
+            path="/app"
             element={
               <ProtectedRoute>
                 <Layout />
@@ -42,8 +55,11 @@ function App() {
             <Route path="account" element={<Account />} />
           </Route>
 
+          {/* Root redirect - logged in users go to app, others to home */}
+          <Route path="/" element={<Navigate to="/app" replace />} />
+
           {/* Catch all route - redirect to home */}
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<Navigate to="/home" replace />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

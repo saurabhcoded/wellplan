@@ -18,10 +18,10 @@ export default function Signup() {
   const { signUp, user } = useAuth();
   const navigate = useNavigate();
 
-  // Redirect to home if already logged in
+  // Redirect to app if already logged in
   useEffect(() => {
     if (user) {
-      navigate("/", { replace: true });
+      navigate("/app", { replace: true });
     }
   }, [user, navigate]);
 
