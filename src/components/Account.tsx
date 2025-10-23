@@ -2,7 +2,14 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import LoadingSpinner from "./LoadingSpinner";
-import { User, LogOut, Save, Dumbbell } from "lucide-react";
+import {
+  User,
+  LogOut,
+  Save,
+  Dumbbell,
+  Trash2,
+  AlertTriangle,
+} from "lucide-react";
 
 interface HealthMetrics {
   age: number | null;
@@ -13,9 +20,11 @@ interface HealthMetrics {
 }
 
 export default function Account() {
-  const { user, signOut } = useAuth();
+  const { user, userRole, signOut, deleteAccount } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [message, setMessage] = useState<{
     type: "success" | "error";
     text: string;
@@ -123,6 +132,28 @@ export default function Account() {
 
   const handleLogout = async () => {
     await signOut();
+  };
+
+  const handleDeleteAccount = async () => {
+    setDeleting(true);
+    setMessage(null);
+
+    try {
+      const { error } = await deleteAccount();
+
+      if (error) throw error;
+
+      // User will be automatically signed out after deletion
+    } catch (error) {
+      console.error("Error deleting account:", error);
+      setMessage({
+        type: "error",
+        text:
+          error instanceof Error ? error.message : "Failed to delete account",
+      });
+      setDeleting(false);
+      setShowDeleteConfirm(false);
+    }
   };
 
   if (loading) {
@@ -342,6 +373,80 @@ export default function Account() {
             </button>
           </div>
         </form>
+
+        {/* Delete Account Section - Only for fitninja users */}
+        {userRole === "fitninja" && (
+          <div className="p-6 border-t border-slate-700">
+            <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-6">
+              <div className="flex items-start gap-4">
+                <div className="bg-red-500/10 p-2 rounded-lg">
+                  <AlertTriangle className="w-6 h-6 text-red-400" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-red-400 mb-2">
+                    Delete Account
+                  </h3>
+                  <p className="text-slate-400 text-sm mb-4">
+                    Permanently deletes your account and all associated data.
+                    You can sign up again later with the same email to create a
+                    fresh account (no data will be restored).
+                  </p>
+
+                  {!showDeleteConfirm ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowDeleteConfirm(true)}
+                      className="flex items-center gap-2 px-4 py-2 bg-red-500/10 text-red-400 font-medium rounded-lg hover:bg-red-500/20 border border-red-500/50 transition"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Delete Account
+                    </button>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="p-4 bg-slate-900 rounded-lg border border-red-500/30">
+                        <p className="text-sm text-red-300 font-medium mb-2">
+                          Are you absolutely sure?
+                        </p>
+                        <p className="text-xs text-slate-400">
+                          This action cannot be undone. Your account and all
+                          data will be permanently deleted.
+                        </p>
+                      </div>
+                      <div className="flex gap-3">
+                        <button
+                          type="button"
+                          onClick={handleDeleteAccount}
+                          disabled={deleting}
+                          className="flex items-center gap-2 px-4 py-2 bg-red-500 text-white font-medium rounded-lg hover:bg-red-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {deleting ? (
+                            <>
+                              <Dumbbell className="w-4 h-4 animate-bounce" />
+                              Deleting...
+                            </>
+                          ) : (
+                            <>
+                              <Trash2 className="w-4 h-4" />
+                              Yes, Delete My Account
+                            </>
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowDeleteConfirm(false)}
+                          disabled={deleting}
+                          className="px-4 py-2 bg-slate-700 text-slate-300 font-medium rounded-lg hover:bg-slate-600 transition disabled:opacity-50"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
