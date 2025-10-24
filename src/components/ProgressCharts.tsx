@@ -1,13 +1,26 @@
 import { useState, useEffect } from 'react';
 import { supabase, DailyLog, WeightLog } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { TrendingUp, Calendar, Activity, Scale } from 'lucide-react';
+import { Scale } from "lucide-react";
+import {
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Area,
+  AreaChart,
+} from "recharts";
+import WorkoutCompletionCard from "./progress/WorkoutCompletionCard";
+import WeightChangeCard from "./progress/WeightChangeCard";
+import StreakCard from "./progress/StreakCard";
+import BMICard from "./progress/BMICard";
 
-type TimeRange = 'week' | 'month';
+type TimeRange = "week" | "month";
 
 export default function ProgressCharts() {
   const { user } = useAuth();
-  const [timeRange, setTimeRange] = useState<TimeRange>('week');
+  const [timeRange, setTimeRange] = useState<TimeRange>("week");
   const [weightLogs, setWeightLogs] = useState<WeightLog[]>([]);
   const [dailyLogs, setDailyLogs] = useState<DailyLog[]>([]);
   const [heightCm, setHeightCm] = useState<number | null>(null);
@@ -26,51 +39,16 @@ export default function ProgressCharts() {
 
   const loadProfile = async () => {
     if (!user) return;
-    
+
     const { data } = await supabase
-      .from('profiles')
-      .select('height_cm')
-      .eq('id', user.id)
+      .from("profiles")
+      .select("height_cm")
+      .eq("id", user.id)
       .maybeSingle();
-    
+
     if (data?.height_cm) {
       setHeightCm(data.height_cm);
     }
-  };
-
-  const calculateBMI = () => {
-    if (!heightCm || !stats.currentWeight || stats.currentWeight === 0) return null;
-    
-    // Convert height from cm to meters
-    const heightM = heightCm / 100;
-    // Calculate BMI
-    const bmi = stats.currentWeight / (heightM * heightM);
-    return bmi;
-  };
-
-  const getBMICategory = (bmi: number | null) => {
-    if (!bmi) return { label: 'N/A', color: 'slate', range: '' };
-    
-    if (bmi < 18.5) return { 
-      label: 'Underweight', 
-      color: 'blue',
-      range: '< 18.5'
-    };
-    if (bmi < 25) return { 
-      label: 'Normal', 
-      color: 'green',
-      range: '18.5 - 24.9'
-    };
-    if (bmi < 30) return { 
-      label: 'Overweight', 
-      color: 'yellow',
-      range: '25 - 29.9'
-    };
-    return { 
-      label: 'Obese', 
-      color: 'red',
-      range: '≥ 30'
-    };
   };
 
   const loadData = async () => {
@@ -195,15 +173,15 @@ export default function ProgressCharts() {
   const workoutData = getWorkoutData();
   const labels = getDateLabels();
 
-  const maxWeight = Math.max(
-    ...(weightData.filter((w) => w !== null) as number[]),
-    0
-  );
-  const minWeight = Math.min(
-    ...(weightData.filter((w) => w !== null) as number[]),
-    0
-  );
-  const weightRange = maxWeight - minWeight || 10;
+  // Transform data for Recharts - keep all dates, including those without weight data
+  const chartData = labels.map((date, index) => ({
+    date: new Date(date).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+    }),
+    weight: weightData[index],
+    fullDate: date,
+  }));
 
   return (
     <div className="max-w-6xl mx-auto">
@@ -260,296 +238,97 @@ export default function ProgressCharts() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 mb-4 md:mb-6">
-        <div className="bg-slate-800 rounded-lg md:rounded-xl p-4 md:p-6 border border-slate-700">
-          <div className="flex items-center gap-2 md:gap-3 mb-1.5 md:mb-2">
-            <div className="p-1.5 md:p-2 bg-blue-500/20 rounded-lg">
-              <Activity className="w-4 md:w-5 h-4 md:h-5 text-blue-400" />
-            </div>
-            <h3 className="text-slate-400 text-xs md:text-sm font-medium">
-              Workout Completion
-            </h3>
-          </div>
-          <div className="text-2xl md:text-3xl font-bold text-white mb-0.5 md:mb-1">
-            {stats.totalWorkouts > 0
-              ? Math.round(
-                  (stats.completedWorkouts / stats.totalWorkouts) * 100
-                )
-              : 0}
-            %
-          </div>
-          <div className="text-slate-500 text-xs md:text-sm mb-2 md:mb-3">
-            {stats.completedWorkouts} of {stats.totalWorkouts} workouts
-          </div>
-          {/* Progress bar with graduated greens */}
-          <div className="w-full bg-slate-700 rounded-full h-2 md:h-2.5">
-            <div
-              className={`h-2 md:h-2.5 rounded-full transition-all duration-500 ${(() => {
-                const progress =
-                  stats.totalWorkouts > 0
-                    ? (stats.completedWorkouts / stats.totalWorkouts) * 100
-                    : 0;
-                if (progress === 0) return "bg-slate-600";
-                if (progress < 33) return "bg-emerald-900/80";
-                if (progress < 67) return "bg-emerald-700/90";
-                if (progress < 100) return "bg-emerald-600";
-                return "bg-gradient-to-r from-green-500 to-emerald-400";
-              })()}`}
-              style={{
-                width: `${
-                  stats.totalWorkouts > 0
-                    ? (stats.completedWorkouts / stats.totalWorkouts) * 100
-                    : 0
-                }%`,
-              }}
-            />
-          </div>
-        </div>
-
-        <div className="bg-slate-800 rounded-lg md:rounded-xl p-4 md:p-6 border border-slate-700">
-          <div className="flex items-center gap-2 md:gap-3 mb-1.5 md:mb-2">
-            <div className="p-1.5 md:p-2 bg-green-500/20 rounded-lg">
-              <TrendingUp className="w-4 md:w-5 h-4 md:h-5 text-green-400" />
-            </div>
-            <h3 className="text-slate-400 text-xs md:text-sm font-medium">
-              Weight Change
-            </h3>
-          </div>
-          <div className="text-2xl md:text-3xl font-bold text-white mb-0.5 md:mb-1">
-            {stats.weightChange > 0 ? "+" : ""}
-            {stats.weightChange.toFixed(1)}
-            <span className="text-lg md:text-xl text-slate-400 ml-1">
-              {weightLogs[0]?.unit || "kg"}
-            </span>
-          </div>
-          <div className="text-slate-500 text-xs md:text-sm">
-            {stats.startWeight > 0 &&
-              `${stats.startWeight} → ${stats.currentWeight}`}
-          </div>
-        </div>
-
-        <div className="bg-slate-800 rounded-lg md:rounded-xl p-4 md:p-6 border border-slate-700">
-          <div className="flex items-center gap-2 md:gap-3 mb-1.5 md:mb-2">
-            <div className="p-1.5 md:p-2 bg-cyan-500/20 rounded-lg">
-              <Calendar className="w-4 md:w-5 h-4 md:h-5 text-cyan-400" />
-            </div>
-            <h3 className="text-slate-400 text-xs md:text-sm font-medium">Streak</h3>
-          </div>
-          <div className="text-2xl md:text-3xl font-bold text-white mb-0.5 md:mb-1">
-            {(() => {
-              let streak = 0;
-              const sortedLogs = [...dailyLogs].sort(
-                (a, b) =>
-                  new Date(b.log_date).getTime() -
-                  new Date(a.log_date).getTime()
-              );
-
-              for (const log of sortedLogs) {
-                if (log.workout_completed) streak++;
-                else break;
-              }
-
-              return streak;
-            })()}
-          </div>
-          <div className="text-slate-500 text-xs md:text-sm">consecutive days</div>
-        </div>
-
-        {/* BMI Card */}
-        <div className="bg-slate-800 rounded-lg md:rounded-xl p-4 md:p-6 border border-slate-700">
-          <div className="flex items-center gap-2 md:gap-3 mb-1.5 md:mb-2">
-            <div className="p-1.5 md:p-2 bg-purple-500/20 rounded-lg">
-              <Scale className="w-4 md:w-5 h-4 md:h-5 text-purple-400" />
-            </div>
-            <h3 className="text-slate-400 text-xs md:text-sm font-medium">BMI</h3>
-          </div>
-          {(() => {
-            const bmi = calculateBMI();
-            const category = getBMICategory(bmi);
-            
-            if (!bmi) {
-              return (
-                <div className="text-center py-3 md:py-4">
-                  <div className="text-lg md:text-xl font-bold text-slate-500 mb-1">--</div>
-                  <div className="text-[10px] md:text-xs text-slate-500">
-                    Add height in Account
-                  </div>
-                </div>
-              );
-            }
-
-            const colorClasses = {
-              blue: 'text-blue-400 border-blue-500/50 bg-blue-500/10',
-              green: 'text-green-400 border-green-500/50 bg-green-500/10',
-              yellow: 'text-yellow-400 border-yellow-500/50 bg-yellow-500/10',
-              red: 'text-red-400 border-red-500/50 bg-red-500/10',
-              slate: 'text-slate-400 border-slate-500/50 bg-slate-500/10'
-            };
-
-            return (
-              <>
-                <div className="text-2xl md:text-3xl font-bold text-white mb-0.5 md:mb-1">
-                  {bmi.toFixed(1)}
-                </div>
-                <div className="text-slate-500 text-[10px] md:text-xs mb-2 md:mb-3">{category.range}</div>
-                
-                {/* BMI Category Badge */}
-                <div className={`inline-block px-2 md:px-3 py-0.5 md:py-1 rounded-full border text-[10px] md:text-xs font-semibold ${colorClasses[category.color as keyof typeof colorClasses]}`}>
-                  {category.label}
-                </div>
-
-                {/* Visual BMI Scale */}
-                <div className="mt-3 md:mt-4">
-                  <div className="h-2 bg-slate-700 rounded-full overflow-hidden relative">
-                    {/* Gradient background showing BMI ranges */}
-                    <div className="absolute inset-0 flex">
-                      <div className="flex-1 bg-gradient-to-r from-blue-500 to-blue-400"></div>
-                      <div className="flex-1 bg-gradient-to-r from-green-500 to-green-400"></div>
-                      <div className="flex-1 bg-gradient-to-r from-yellow-500 to-yellow-400"></div>
-                      <div className="flex-1 bg-gradient-to-r from-red-500 to-red-400"></div>
-                    </div>
-                    {/* Indicator */}
-                    <div 
-                      className="absolute top-0 bottom-0 w-1 bg-white shadow-lg"
-                      style={{
-                        left: `${Math.min(Math.max(((bmi - 15) / 20) * 100, 0), 100)}%`
-                      }}
-                    ></div>
-                  </div>
-                  <div className="flex justify-between text-[10px] text-slate-500 mt-1">
-                    <span>15</span>
-                    <span>20</span>
-                    <span>25</span>
-                    <span>30</span>
-                    <span>35</span>
-                  </div>
-                </div>
-              </>
-            );
-          })()}
-        </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 mb-4 md:mb-6">
+        <WorkoutCompletionCard
+          completedWorkouts={stats.completedWorkouts}
+          totalWorkouts={stats.totalWorkouts}
+        />
+        <WeightChangeCard
+          weightChange={stats.weightChange}
+          startWeight={stats.startWeight}
+          currentWeight={stats.currentWeight}
+          unit={weightLogs[0]?.unit || "kg"}
+        />
+        <StreakCard dailyLogs={dailyLogs} />
+        <BMICard currentWeight={stats.currentWeight} heightCm={heightCm} />
       </div>
 
       <div className="bg-slate-800 rounded-xl p-6 border border-slate-700 mb-6">
         <h3 className="text-xl font-semibold text-white mb-6">
           Weight Progress
         </h3>
-        <div className="relative h-64">
-          <svg className="w-full h-full">
-            <defs>
-              <linearGradient
-                id="weightGradient"
-                x1="0%"
-                y1="0%"
-                x2="0%"
-                y2="100%"
+        {weightLogs.length > 0 ? (
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart
+                data={chartData}
+                margin={{ top: 5, right: 5, left: -20, bottom: 5 }}
               >
-                <stop
-                  offset="0%"
-                  stopColor="rgb(59, 130, 246)"
-                  stopOpacity="0.3"
+                <defs>
+                  <linearGradient id="colorWeight" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="#334155"
+                  opacity={0.3}
                 />
-                <stop
-                  offset="100%"
-                  stopColor="rgb(59, 130, 246)"
-                  stopOpacity="0"
+                <XAxis dataKey="date" hide={true} />
+                <YAxis
+                  hide={true}
+                  domain={
+                    weightLogs.length > 0
+                      ? ["dataMin - 1", "dataMax + 1"]
+                      : [0, 100]
+                  }
                 />
-              </linearGradient>
-            </defs>
-
-            {labels.map((_, index) => {
-              const x = (index / (labels.length - 1)) * 100;
-              return (
-                <line
-                  key={index}
-                  x1={`${x}%`}
-                  y1="0"
-                  x2={`${x}%`}
-                  y2="100%"
-                  stroke="rgb(51, 65, 85)"
-                  strokeWidth="1"
-                  opacity="0.3"
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "#1e293b",
+                    border: "1px solid #334155",
+                    borderRadius: "8px",
+                    color: "#fff",
+                  }}
+                  formatter={(value: any) => {
+                    if (value === null || value === undefined) {
+                      return ["No data", "Weight"];
+                    }
+                    return [
+                      `${value} ${weightLogs[0]?.unit || "kg"}`,
+                      "Weight",
+                    ];
+                  }}
+                  labelStyle={{ color: "#94a3b8" }}
                 />
-              );
-            })}
-
-            {[0, 25, 50, 75, 100].map((y) => (
-              <line
-                key={y}
-                x1="0"
-                y1={`${y}%`}
-                x2="100%"
-                y2={`${y}%`}
-                stroke="rgb(51, 65, 85)"
-                strokeWidth="1"
-                opacity="0.3"
-              />
-            ))}
-
-            <polyline
-              points={weightData
-                .map((weight, index) => {
-                  if (weight === null) return null;
-                  const x = (index / (labels.length - 1)) * 100;
-                  const y =
-                    100 - ((weight - minWeight) / weightRange) * 80 - 10;
-                  return `${x},${y}`;
-                })
-                .filter((p) => p !== null)
-                .join(" ")}
-              fill="url(#weightGradient)"
-              stroke="none"
-            />
-
-            <polyline
-              points={weightData
-                .map((weight, index) => {
-                  if (weight === null) return null;
-                  const x = (index / (labels.length - 1)) * 100;
-                  const y =
-                    100 - ((weight - minWeight) / weightRange) * 80 - 10;
-                  return `${x},${y}`;
-                })
-                .filter((p) => p !== null)
-                .join(" ")}
-              fill="none"
-              stroke="rgb(59, 130, 246)"
-              strokeWidth="3"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-
-            {weightData.map((weight, index) => {
-              if (weight === null) return null;
-              const x = (index / (labels.length - 1)) * 100;
-              const y = 100 - ((weight - minWeight) / weightRange) * 80 - 10;
-              return (
-                <circle
-                  key={index}
-                  cx={`${x}%`}
-                  cy={`${y}%`}
-                  r="4"
-                  fill="rgb(59, 130, 246)"
-                  stroke="rgb(15, 23, 42)"
-                  strokeWidth="2"
+                <Area
+                  type="monotone"
+                  dataKey="weight"
+                  stroke="#3b82f6"
+                  strokeWidth={3}
+                  fill="url(#colorWeight)"
+                  connectNulls={true}
+                  dot={{
+                    fill: "#3b82f6",
+                    strokeWidth: 2,
+                    r: 4,
+                    stroke: "#0f172a",
+                  }}
+                  activeDot={{ r: 6, strokeWidth: 2 }}
                 />
-              );
-            })}
-          </svg>
-
-          <div className="absolute bottom-0 left-0 right-0 flex justify-between text-xs text-slate-500 mt-2">
-            {labels
-              .filter((_, i) => timeRange === "week" || i % 5 === 0)
-              .map((label, index) => (
-                <span key={index}>
-                  {new Date(label).toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                  })}
-                </span>
-              ))}
+              </AreaChart>
+            </ResponsiveContainer>
           </div>
-        </div>
+        ) : (
+          <div className="h-64 flex items-center justify-center text-slate-500">
+            <div className="text-center">
+              <Scale className="w-12 h-12 mx-auto mb-3 opacity-50" />
+              <p>No weight data available</p>
+              <p className="text-sm mt-1">Log your weight to see progress</p>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
@@ -641,7 +420,7 @@ export default function ProgressCharts() {
             );
           })}
         </div>
-        <div className="flex flex-wrap items-center gap-4 mt-4 text-sm text-slate-400">
+        <div className="flex flex-wrap items-center gap-3 gap-y-2 mt-4 text-sm text-slate-400">
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 bg-gradient-to-br from-green-500 to-emerald-400 rounded" />
             <span>Fully Completed</span>
