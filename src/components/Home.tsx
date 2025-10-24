@@ -11,6 +11,7 @@ import {
   Sparkles,
   ArrowRight,
 } from "lucide-react";
+import { PLAYSTORE_LINK } from "../lib/supabase";
 
 export default function Home() {
   return (
@@ -86,7 +87,7 @@ export default function Home() {
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </Link>
             <a
-              href="https://play.google.com/store"
+              href={PLAYSTORE_LINK || "#"}
               target="_blank"
               rel="noopener noreferrer"
               className="group inline-flex items-center gap-3 bg-black hover:bg-slate-900 text-white px-10 py-5 rounded-2xl font-bold text-lg transition-all duration-300 hover:scale-105 w-full sm:w-auto justify-center border border-slate-700 min-h-[76px]"
@@ -251,7 +252,7 @@ export default function Home() {
                 your Android device and start tracking your workouts today.
               </p>
               <a
-                href="https://play.google.com/store"
+                href={PLAYSTORE_LINK || "#"}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-3 bg-black hover:bg-slate-900 text-white px-8 py-4 rounded-xl font-semibold transition-all duration-300 hover:scale-105 group"

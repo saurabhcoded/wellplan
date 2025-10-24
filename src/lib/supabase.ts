@@ -3,13 +3,19 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const storageBucket = import.meta.env.VITE_STORAGE_BUCKET || "wellplan-bucket";
+const maxFileSizeMB =
+  Number(import.meta.env.VITE_MAX_PHYSICAL_PROGRESS_CAPTURE_SIZE) || 4;
+const playstoreLink = import.meta.env.VITE_PLAYSTORE_LINK || "";
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables');
+  throw new Error("Missing Supabase environment variables");
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 export const STORAGE_BUCKET = storageBucket;
+export const MAX_FILE_SIZE_MB = maxFileSizeMB;
+export const MAX_FILE_SIZE_BYTES = maxFileSizeMB * 1024 * 1024;
+export const PLAYSTORE_LINK = playstoreLink;
 
 export type Profile = {
   id: string;

@@ -1,5 +1,11 @@
 import { useState, useEffect, useRef } from "react";
-import { supabase, MediaResource, STORAGE_BUCKET } from "../lib/supabase";
+import {
+  supabase,
+  MediaResource,
+  STORAGE_BUCKET,
+  MAX_FILE_SIZE_BYTES,
+  MAX_FILE_SIZE_MB,
+} from "../lib/supabase";
 import { useAuth } from "../contexts/AuthContext";
 import {
   Upload,
@@ -58,6 +64,74 @@ export default function PhysicalProgressLogger() {
     setLoading(false);
   };
 
+  const compressImage = async (file: File): Promise<File> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target?.result as string;
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          const ctx = canvas.getContext("2d");
+          if (!ctx) {
+            reject(new Error("Could not get canvas context"));
+            return;
+          }
+
+          // Calculate new dimensions to maintain aspect ratio
+          let width = img.width;
+          let height = img.height;
+          const maxDimension = 2048; // Max width or height
+
+          if (width > maxDimension || height > maxDimension) {
+            if (width > height) {
+              height = (height / width) * maxDimension;
+              width = maxDimension;
+            } else {
+              width = (width / height) * maxDimension;
+              height = maxDimension;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          ctx.drawImage(img, 0, 0, width, height);
+
+          // Try different quality levels to get under the size limit
+          const tryCompress = (quality: number) => {
+            canvas.toBlob(
+              (blob) => {
+                if (!blob) {
+                  reject(new Error("Could not compress image"));
+                  return;
+                }
+
+                // Check if the compressed image is under the limit
+                if (blob.size <= MAX_FILE_SIZE_BYTES || quality <= 0.1) {
+                  const compressedFile = new File([blob], file.name, {
+                    type: "image/jpeg",
+                    lastModified: Date.now(),
+                  });
+                  resolve(compressedFile);
+                } else {
+                  // Try with lower quality
+                  tryCompress(quality - 0.1);
+                }
+              },
+              "image/jpeg",
+              quality
+            );
+          };
+
+          tryCompress(0.9);
+        };
+        img.onerror = () => reject(new Error("Could not load image"));
+      };
+      reader.onerror = () => reject(new Error("Could not read file"));
+    });
+  };
+
   const uploadPhoto = async (file: File, isCamera: boolean = false) => {
     if (!user) return;
 
@@ -70,22 +144,39 @@ export default function PhysicalProgressLogger() {
         return;
       }
 
-      if (file.size > 10 * 1024 * 1024) {
-        // 10MB limit
-        alert("File size must be less than 10MB");
-        return;
+      let fileToUpload = file;
+
+      // Check if file size exceeds the limit and compress if needed
+      if (file.size > MAX_FILE_SIZE_BYTES) {
+        console.log(
+          `Image size (${(file.size / 1024 / 1024).toFixed(
+            2
+          )}MB) exceeds ${MAX_FILE_SIZE_MB}MB limit. Compressing...`
+        );
+        try {
+          fileToUpload = await compressImage(file);
+          console.log(
+            `Compressed to ${(fileToUpload.size / 1024 / 1024).toFixed(2)}MB`
+          );
+        } catch (error) {
+          console.error("Compression error:", error);
+          alert(
+            `Failed to compress image. Please try a smaller image (max ${MAX_FILE_SIZE_MB}MB).`
+          );
+          return;
+        }
       }
 
       // Create unique filename
       const timestamp = new Date().getTime();
-      const fileExt = file.name.split(".").pop();
+      const fileExt = fileToUpload.name.split(".").pop();
       const fileName = `photo_${timestamp}.${fileExt}`;
       const filePath = `${user.id}/progress/${fileName}`;
 
       // Upload to Supabase Storage
       const { error: uploadError } = await supabase.storage
         .from(STORAGE_BUCKET)
-        .upload(filePath, file, {
+        .upload(filePath, fileToUpload, {
           cacheControl: "3600",
           upsert: false,
         });
@@ -103,8 +194,8 @@ export default function PhysicalProgressLogger() {
           resource_type: "progress_photo",
           file_path: filePath,
           file_name: fileName,
-          mime_type: file.type,
-          file_size: file.size,
+          mime_type: fileToUpload.type,
+          file_size: fileToUpload.size,
           description: isCamera ? "Camera capture" : "Uploaded photo",
           taken_at: new Date().toISOString(),
         })
