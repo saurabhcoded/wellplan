@@ -9,13 +9,7 @@ import {
   MAX_FILE_SIZE_MB,
 } from "../lib/supabase";
 import { useAuth } from "../contexts/AuthContext";
-import {
-  Upload,
-  X,
-  Image as ImageIcon,
-  Loader2,
-  Trash2,
-} from "lucide-react";
+import { Upload, X, Image as ImageIcon, Loader2, Trash2 } from "lucide-react";
 import LoadingSpinner from "./LoadingSpinner";
 
 interface PhotoWithUrl extends MediaResource {
