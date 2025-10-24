@@ -166,11 +166,7 @@ export default function WorkoutSession({
 
   const handleNextExercise = () => {
     if (currentExerciseIndex < exercises.length - 1) {
-      // Mark current as complete
-      const newCompleted = new Set(completedExercises);
-      newCompleted.add(currentExercise.name);
-      setCompletedExercises(newCompleted);
-
+      // Just move to next exercise without marking as complete
       setCurrentExerciseIndex(currentExerciseIndex + 1);
       setCurrentSet(1);
       setPhase("exercise");
