@@ -185,8 +185,8 @@ export default function ProgressCharts() {
 
   return (
     <div className="max-w-6xl mx-auto">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-3">
-        <div>
+      <div className="flex flex-row items-start justify-between mb-6 gap-4">
+        <div className="flex-1">
           <h2 className="text-3xl font-bold text-white">Progress</h2>
           <p className="text-sm text-slate-400 mt-1">
             {timeRange === "week"
@@ -214,23 +214,23 @@ export default function ProgressCharts() {
                 })()}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-1 bg-slate-800 p-1 rounded-lg border border-slate-700 sm:ml-auto">
           <button
             onClick={() => setTimeRange("week")}
-            className={`px-4 py-2 rounded-lg font-medium transition ${
+            className={`px-4 py-2 rounded-md font-medium transition-all duration-200 ${
               timeRange === "week"
-                ? "bg-blue-500 text-white"
-                : "bg-slate-800 text-slate-400 hover:bg-slate-700"
+                ? "bg-blue-500 text-white shadow-lg"
+                : "text-slate-400 hover:text-slate-300"
             }`}
           >
             Week
           </button>
           <button
             onClick={() => setTimeRange("month")}
-            className={`px-4 py-2 rounded-lg font-medium transition ${
+            className={`px-4 py-2 rounded-md font-medium transition-all duration-200 ${
               timeRange === "month"
-                ? "bg-blue-500 text-white"
-                : "bg-slate-800 text-slate-400 hover:bg-slate-700"
+                ? "bg-blue-500 text-white shadow-lg"
+                : "text-slate-400 hover:text-slate-300"
             }`}
           >
             Month
@@ -254,84 +254,6 @@ export default function ProgressCharts() {
       </div>
 
       <div className="bg-slate-800 rounded-xl p-6 border border-slate-700 mb-6">
-        <h3 className="text-xl font-semibold text-white mb-6">
-          Weight Progress
-        </h3>
-        {weightLogs.length > 0 ? (
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart
-                data={chartData}
-                margin={{ top: 5, right: 5, left: -20, bottom: 5 }}
-              >
-                <defs>
-                  <linearGradient id="colorWeight" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke="#334155"
-                  opacity={0.3}
-                />
-                <XAxis dataKey="date" hide={true} />
-                <YAxis
-                  hide={true}
-                  domain={
-                    weightLogs.length > 0
-                      ? ["dataMin - 1", "dataMax + 1"]
-                      : [0, 100]
-                  }
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "#1e293b",
-                    border: "1px solid #334155",
-                    borderRadius: "8px",
-                    color: "#fff",
-                  }}
-                  formatter={(value: any) => {
-                    if (value === null || value === undefined) {
-                      return ["No data", "Weight"];
-                    }
-                    return [
-                      `${value} ${weightLogs[0]?.unit || "kg"}`,
-                      "Weight",
-                    ];
-                  }}
-                  labelStyle={{ color: "#94a3b8" }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="weight"
-                  stroke="#3b82f6"
-                  strokeWidth={3}
-                  fill="url(#colorWeight)"
-                  connectNulls={true}
-                  dot={{
-                    fill: "#3b82f6",
-                    strokeWidth: 2,
-                    r: 4,
-                    stroke: "#0f172a",
-                  }}
-                  activeDot={{ r: 6, strokeWidth: 2 }}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        ) : (
-          <div className="h-64 flex items-center justify-center text-slate-500">
-            <div className="text-center">
-              <Scale className="w-12 h-12 mx-auto mb-3 opacity-50" />
-              <p>No weight data available</p>
-              <p className="text-sm mt-1">Log your weight to see progress</p>
-            </div>
-          </div>
-        )}
-      </div>
-
-      <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
         <h3 className="text-xl font-semibold text-white mb-4">
           Workout Activity
           <span className="text-sm font-normal text-slate-400 ml-2">
@@ -422,26 +344,104 @@ export default function ProgressCharts() {
         </div>
         <div className="flex flex-wrap items-center gap-3 gap-y-2 mt-4 text-sm text-slate-400">
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-gradient-to-br from-green-500 to-emerald-400 rounded" />
+            <div className="w-3 h-3 bg-gradient-to-br from-green-500 to-emerald-400 rounded" />
             <span>Fully Completed</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-emerald-700 rounded" />
+            <div className="w-3 h-3 bg-emerald-700 rounded" />
             <span>Partially Done</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-emerald-900 rounded" />
+            <div className="w-3 h-3 bg-emerald-900 rounded" />
             <span>Started</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-slate-700 rounded" />
+            <div className="w-3 h-3 bg-slate-700 rounded" />
             <span>Missed</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-slate-700 border-2 border-blue-400 rounded" />
+            <div className="w-3 h-3 bg-slate-700 border-2 border-blue-400 rounded" />
             <span>Today</span>
           </div>
         </div>
+      </div>
+
+      <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+        <h3 className="text-xl font-semibold text-white mb-6">
+          Weight Progress
+        </h3>
+        {weightLogs.length > 0 ? (
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart
+                data={chartData}
+                margin={{ top: 5, right: 5, left: -20, bottom: 5 }}
+              >
+                <defs>
+                  <linearGradient id="colorWeight" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="#334155"
+                  opacity={0.3}
+                />
+                <XAxis dataKey="date" hide={true} />
+                <YAxis
+                  hide={true}
+                  domain={
+                    weightLogs.length > 0
+                      ? ["dataMin - 1", "dataMax + 1"]
+                      : [0, 100]
+                  }
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "#1e293b",
+                    border: "1px solid #334155",
+                    borderRadius: "8px",
+                    color: "#fff",
+                  }}
+                  formatter={(value: any) => {
+                    if (value === null || value === undefined) {
+                      return ["No data", "Weight"];
+                    }
+                    return [
+                      `${value} ${weightLogs[0]?.unit || "kg"}`,
+                      "Weight",
+                    ];
+                  }}
+                  labelStyle={{ color: "#94a3b8" }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="weight"
+                  stroke="#3b82f6"
+                  strokeWidth={3}
+                  fill="url(#colorWeight)"
+                  connectNulls={true}
+                  dot={{
+                    fill: "#3b82f6",
+                    strokeWidth: 2,
+                    r: 4,
+                    stroke: "#0f172a",
+                  }}
+                  activeDot={{ r: 6, strokeWidth: 2 }}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        ) : (
+          <div className="h-64 flex items-center justify-center text-slate-500">
+            <div className="text-center">
+              <Scale className="w-12 h-12 mx-auto mb-3 opacity-50" />
+              <p>No weight data available</p>
+              <p className="text-sm mt-1">Log your weight to see progress</p>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
