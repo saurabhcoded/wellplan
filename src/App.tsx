@@ -13,6 +13,7 @@ import WorkoutPlanner from "./components/WorkoutPlanner";
 import ProgressCharts from "./components/ProgressCharts";
 import Account from "./components/Account";
 import ExerciseLibrary from "./components/ExerciseLibrary";
+import AdminPublishedPlans from "./components/AdminPublishedPlans";
 import Layout from "./components/Layout";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -50,6 +51,10 @@ function App() {
           >
             <Route index element={<DailyTracker />} />
             <Route path="planner" element={<WorkoutPlanner />} />
+            <Route
+              path="admin/published-plans"
+              element={<AdminPublishedPlans />}
+            />
             <Route path="progress" element={<ProgressCharts />} />
             <Route path="exercises" element={<ExerciseLibrary />} />
             <Route path="account" element={<Account />} />

@@ -28,6 +28,7 @@ export type WorkoutPlan = {
   start_date: string;
   end_date: string;
   is_active: boolean;
+  source_published_plan_id?: string | null;
   created_at: string;
 };
 
@@ -80,4 +81,26 @@ export type ExerciseLibraryItem = {
   created_by: string;
   created_at: string;
   updated_at: string;
+};
+
+export type PublishedPlan = {
+  id: string;
+  name: string;
+  description: string | null;
+  difficulty_level: "beginner" | "intermediate" | "advanced" | null;
+  duration_weeks: number;
+  created_by: string;
+  is_published: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type PublishedWorkoutDay = {
+  id: string;
+  published_plan_id: string;
+  day_of_week: number;
+  is_rest_day: boolean;
+  workout_name: string;
+  exercises: Exercise[];
+  created_at: string;
 };

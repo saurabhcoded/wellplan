@@ -6,9 +6,12 @@ import {
   TrendingUp,
   User,
   Library,
+  Shield,
 } from "lucide-react";
+import { useAuth } from "../contexts/AuthContext";
 
 export default function Layout() {
+  const { userRole } = useAuth();
   const navLinkClass = ({ isActive }: { isActive: boolean }) =>
     `flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition ${
       isActive
@@ -56,6 +59,16 @@ export default function Layout() {
                 <span>Exercises</span>
               </NavLink>
 
+              {userRole === "admin" && (
+                <NavLink
+                  to="/app/admin/published-plans"
+                  className={navLinkClass}
+                >
+                  <Shield className="w-4 h-4" />
+                  <span>Admin Plans</span>
+                </NavLink>
+              )}
+
               <NavLink to="/app/account" className={navLinkClass}>
                 <User className="w-4 h-4" />
                 <span>Account</span>
@@ -72,14 +85,14 @@ export default function Layout() {
 
       {/* Bottom Navigation - Mobile */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-slate-800/95 backdrop-blur-sm border-t border-slate-700 z-40">
-        <div className="grid grid-cols-5 gap-1 px-2 py-3">
+        <div className="grid grid-cols-4 gap-1 px-2 py-3">
           <NavLink to="/app" className={mobileNavLinkClass} end>
             {({ isActive }) => (
               <>
                 <Home
-                  className={`w-6 h-6 ${isActive ? "text-blue-400" : ""}`}
+                  className={`w-5 h-5 ${isActive ? "text-blue-400" : ""}`}
                 />
-                <span className="text-xs">Dashboard</span>
+                <span className="text-xs">Home</span>
               </>
             )}
           </NavLink>
@@ -88,7 +101,7 @@ export default function Layout() {
             {({ isActive }) => (
               <>
                 <Calendar
-                  className={`w-6 h-6 ${isActive ? "text-blue-400" : ""}`}
+                  className={`w-5 h-5 ${isActive ? "text-blue-400" : ""}`}
                 />
                 <span className="text-xs">Planner</span>
               </>
@@ -99,20 +112,9 @@ export default function Layout() {
             {({ isActive }) => (
               <>
                 <TrendingUp
-                  className={`w-6 h-6 ${isActive ? "text-blue-400" : ""}`}
+                  className={`w-5 h-5 ${isActive ? "text-blue-400" : ""}`}
                 />
                 <span className="text-xs">Progress</span>
-              </>
-            )}
-          </NavLink>
-
-          <NavLink to="/app/exercises" className={mobileNavLinkClass}>
-            {({ isActive }) => (
-              <>
-                <Library
-                  className={`w-6 h-6 ${isActive ? "text-blue-400" : ""}`}
-                />
-                <span className="text-xs">Exercises</span>
               </>
             )}
           </NavLink>
@@ -121,7 +123,7 @@ export default function Layout() {
             {({ isActive }) => (
               <>
                 <User
-                  className={`w-6 h-6 ${isActive ? "text-blue-400" : ""}`}
+                  className={`w-5 h-5 ${isActive ? "text-blue-400" : ""}`}
                 />
                 <span className="text-xs">Account</span>
               </>

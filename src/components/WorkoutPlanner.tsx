@@ -1,5 +1,12 @@
 import { useState, useEffect } from 'react';
-import { supabase, WorkoutPlan, WorkoutDay, Exercise } from '../lib/supabase';
+import {
+  supabase,
+  WorkoutPlan,
+  WorkoutDay,
+  Exercise,
+  PublishedPlan,
+  PublishedWorkoutDay,
+} from "../lib/supabase";
 import { useAuth } from '../contexts/AuthContext';
 import {
   Plus,
@@ -8,8 +15,13 @@ import {
   Calendar,
   ChevronDown,
   ChevronUp,
+  Sparkles,
+  Copy,
+  TrendingUp,
+  Clock,
 } from "lucide-react";
 import ExerciseAutocomplete from "./ExerciseAutocomplete";
+import LoadingSpinner from "./LoadingSpinner";
 
 const DAYS = [
   "Sunday",
@@ -37,8 +49,19 @@ export default function WorkoutPlanner() {
   const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set());
   const [isExercisesExpanded, setIsExercisesExpanded] = useState(false);
 
+  // Published plans state
+  const [publishedPlans, setPublishedPlans] = useState<PublishedPlan[]>([]);
+  const [expandedPublishedPlan, setExpandedPublishedPlan] = useState<
+    string | null
+  >(null);
+  const [publishedWorkoutDays, setPublishedWorkoutDays] = useState<{
+    [key: string]: PublishedWorkoutDay[];
+  }>({});
+  const [copying, setCopying] = useState<string | null>(null);
+
   useEffect(() => {
     loadPlans();
+    loadPublishedPlans();
   }, [user]);
 
   useEffect(() => {
@@ -225,10 +248,136 @@ export default function WorkoutPlanner() {
     });
   };
 
+  // Published plans functions
+  const loadPublishedPlans = async () => {
+    const { data } = await supabase
+      .from("published_plans")
+      .select("*")
+      .eq("is_published", true)
+      .order("created_at", { ascending: false });
+
+    if (data) {
+      setPublishedPlans(data);
+    }
+  };
+
+  const loadPublishedWorkoutDays = async (planId: string) => {
+    if (publishedWorkoutDays[planId]) return; // Already loaded
+
+    const { data } = await supabase
+      .from("published_workout_days")
+      .select("*")
+      .eq("published_plan_id", planId)
+      .order("day_of_week");
+
+    if (data) {
+      setPublishedWorkoutDays((prev) => ({ ...prev, [planId]: data }));
+    }
+  };
+
+  const togglePublishedPlanExpansion = async (planId: string) => {
+    if (expandedPublishedPlan === planId) {
+      setExpandedPublishedPlan(null);
+    } else {
+      setExpandedPublishedPlan(planId);
+      await loadPublishedWorkoutDays(planId);
+    }
+  };
+
+  const copyPlanToMyPlans = async (publishedPlan: PublishedPlan) => {
+    if (!user) return;
+
+    setCopying(publishedPlan.id);
+
+    try {
+      // Load workout days if not already loaded
+      let days = publishedWorkoutDays[publishedPlan.id];
+      if (!days) {
+        const { data } = await supabase
+          .from("published_workout_days")
+          .select("*")
+          .eq("published_plan_id", publishedPlan.id)
+          .order("day_of_week");
+        days = data || [];
+      }
+
+      // Create new workout plan
+      const startDate = new Date();
+      const endDate = new Date();
+      endDate.setDate(
+        endDate.getDate() + (publishedPlan.duration_weeks || 1) * 7
+      );
+
+      const { data: newPlan, error: planError } = await supabase
+        .from("workout_plans")
+        .insert({
+          user_id: user.id,
+          name: publishedPlan.name,
+          start_date: startDate.toISOString().split("T")[0],
+          end_date: endDate.toISOString().split("T")[0],
+          is_active: false,
+          source_published_plan_id: publishedPlan.id,
+        })
+        .select()
+        .single();
+
+      if (planError || !newPlan) {
+        throw planError;
+      }
+
+      // Copy workout days
+      const workoutDaysToInsert = days.map((day) => ({
+        plan_id: newPlan.id,
+        day_of_week: day.day_of_week,
+        is_rest_day: day.is_rest_day,
+        workout_name: day.workout_name,
+        exercises: day.exercises,
+      }));
+
+      const { error: daysError } = await supabase
+        .from("workout_days")
+        .insert(workoutDaysToInsert);
+
+      if (daysError) {
+        throw daysError;
+      }
+
+      alert(
+        `Successfully copied "${publishedPlan.name}" to your plans! You can now activate and customize it.`
+      );
+
+      // Reload user plans to show the new plan
+      await loadPlans();
+    } catch (error) {
+      console.error("Error copying plan:", error);
+      alert("Failed to copy plan. Please try again.");
+    } finally {
+      setCopying(null);
+    }
+  };
+
+  const getDifficultyColor = (
+    level: string | null
+  ): { bg: string; text: string } => {
+    switch (level) {
+      case "beginner":
+        return { bg: "bg-green-500/20", text: "text-green-400" };
+      case "intermediate":
+        return { bg: "bg-yellow-500/20", text: "text-yellow-400" };
+      case "advanced":
+        return { bg: "bg-red-500/20", text: "text-red-400" };
+      default:
+        return { bg: "bg-slate-500/20", text: "text-slate-400" };
+    }
+  };
+
   return (
     <div className="max-w-6xl mx-auto">
       <div className="mb-8">
-        <h2 className="text-3xl font-bold text-white mb-6">Workout Plans</h2>
+        <h2 className="text-3xl font-bold text-white">Workout Plans</h2>
+        <p className="text-slate-400 mb-6">
+          Create and manage your weekly workout schedules
+        </p>
 
         <div className="bg-slate-800 rounded-xl p-6 border border-slate-700 mb-6">
           <div className="flex items-center justify-between mb-4">
@@ -281,31 +430,39 @@ export default function WorkoutPlanner() {
                     : "bg-slate-900 border-slate-700"
                 }`}
               >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="text-white font-medium">{plan.name}</h4>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex-1">
+                    <h4 className="text-white font-medium mb-1">{plan.name}</h4>
                     <p className="text-slate-400 text-sm">
                       {new Date(plan.start_date).toLocaleDateString()} -{" "}
                       {new Date(plan.end_date).toLocaleDateString()}
                     </p>
                   </div>
-                  <div className="flex gap-2">
+                  <button
+                    onClick={() => deletePlan(plan.id)}
+                    className="p-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {(plan.source_published_plan_id || !plan.is_active) && (
+                  <div className="flex items-center gap-2 pt-3 border-t border-slate-700">
+                    {plan.source_published_plan_id && (
+                      <span className="px-2 py-1 bg-purple-500/20 text-purple-400 text-xs font-semibold rounded-full">
+                        Pre-Built
+                      </span>
+                    )}
                     {!plan.is_active && (
                       <button
                         onClick={() => setAsActivePlan(plan)}
-                        className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded-lg transition"
+                        className="ml-auto px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded-lg transition"
                       >
                         Activate
                       </button>
                     )}
-                    <button
-                      onClick={() => deletePlan(plan.id)}
-                      className="p-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
                   </div>
-                </div>
+                )}
               </div>
             ))}
           </div>
@@ -607,6 +764,166 @@ export default function WorkoutPlanner() {
                 Cancel
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Published Plans Section */}
+      {publishedPlans.length > 0 && (
+        <div className="mt-6 sm:mt-8">
+          <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
+            <Sparkles className="w-6 h-6 sm:w-8 sm:h-8 text-blue-400 flex-shrink-0" />
+            <div>
+              <h2 className="text-2xl sm:text-3xl font-bold text-white">
+                Pre-Built Workout Plans
+              </h2>
+              <p className="text-slate-400 text-sm sm:text-base">
+                Browse and copy professional workout plans
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            {publishedPlans.map((plan) => {
+              const isExpanded = expandedPublishedPlan === plan.id;
+              const days = publishedWorkoutDays[plan.id] || [];
+              const difficultyColors = getDifficultyColor(
+                plan.difficulty_level
+              );
+
+              return (
+                <div
+                  key={plan.id}
+                  className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden"
+                >
+                  <div className="p-4 sm:p-6">
+                    <div className="flex flex-col gap-4">
+                      <div className="flex-1">
+                        <div className="flex flex-wrap items-center gap-2 mb-2">
+                          <h3 className="text-lg sm:text-xl font-bold text-white">
+                            {plan.name}
+                          </h3>
+                          <span className="px-2 py-0.5 bg-blue-500/20 text-blue-400 text-xs font-semibold rounded-full flex items-center gap-1">
+                            <Sparkles className="w-3 h-3" />
+                            Pre-Built
+                          </span>
+                        </div>
+
+                        {plan.description && (
+                          <p className="text-slate-300 mb-3 text-sm sm:text-base">
+                            {plan.description}
+                          </p>
+                        )}
+
+                        <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-sm">
+                          {plan.difficulty_level && (
+                            <span
+                              className={`px-2 py-1 rounded ${difficultyColors.bg} ${difficultyColors.text} font-medium capitalize`}
+                            >
+                              <TrendingUp className="w-3 h-3 inline mr-1" />
+                              {plan.difficulty_level}
+                            </span>
+                          )}
+                          <span className="text-slate-400 flex items-center gap-1">
+                            <Clock className="w-4 h-4" />
+                            {plan.duration_weeks}{" "}
+                            {plan.duration_weeks === 1 ? "week" : "weeks"}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <button
+                          onClick={() => copyPlanToMyPlans(plan)}
+                          disabled={copying === plan.id}
+                          className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {copying === plan.id ? (
+                            <>
+                              <LoadingSpinner size="sm" />
+                              Copying...
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-4 h-4" />
+                              Use Plan
+                            </>
+                          )}
+                        </button>
+                        <button
+                          onClick={() => togglePublishedPlanExpansion(plan.id)}
+                          className="flex-1 sm:flex-none flex items-center justify-center gap-1 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition"
+                        >
+                          {isExpanded ? (
+                            <>
+                              Hide
+                              <ChevronUp className="w-4 h-4" />
+                            </>
+                          ) : (
+                            <>
+                              Preview
+                              <ChevronDown className="w-4 h-4" />
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {isExpanded && (
+                    <div className="border-t border-slate-700 bg-slate-900 p-4 sm:p-6">
+                      <h4 className="text-base sm:text-lg font-semibold text-white mb-3 sm:mb-4">
+                        Weekly Schedule
+                      </h4>
+                      <div className="flex gap-3 sm:gap-4 overflow-x-auto pb-4 -mx-4 px-4 sm:mx-0 sm:px-0">
+                        {DAYS.map((day, index) => {
+                          const dayData = days.find(
+                            (d) => d.day_of_week === index
+                          );
+                          return (
+                            <div
+                              key={index}
+                              className="bg-slate-800 rounded-lg p-3 sm:p-4 border border-slate-700 flex-shrink-0 w-48 sm:w-64"
+                            >
+                              <h5 className="font-semibold text-white mb-2 text-sm sm:text-base">
+                                {day}
+                              </h5>
+                              {dayData ? (
+                                dayData.is_rest_day ? (
+                                  <div className="text-slate-400 text-xs sm:text-sm">
+                                    Rest Day
+                                  </div>
+                                ) : (
+                                  <div>
+                                    <div className="text-cyan-400 font-medium mb-2 text-xs sm:text-sm">
+                                      {dayData.workout_name}
+                                    </div>
+                                    <div className="space-y-1">
+                                      {dayData.exercises.map((ex, i) => (
+                                        <div
+                                          key={i}
+                                          className="text-slate-400 text-xs break-words"
+                                        >
+                                          {ex.name} - {ex.sets}x{ex.reps}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )
+                              ) : (
+                                <div className="text-slate-500 text-xs sm:text-sm">
+                                  Not configured
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

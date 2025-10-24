@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabase';
+import { useState, useEffect } from "react";
+import { useAuth } from "../contexts/AuthContext";
+import { supabase } from "../lib/supabase";
 import LoadingSpinner from "./LoadingSpinner";
 import {
   User,
@@ -173,11 +173,26 @@ export default function Account() {
             <div className="bg-white/20 backdrop-blur-sm p-3 rounded-xl">
               <User className="w-8 h-8 text-white" />
             </div>
-            <div>
+            <div className="flex-1 gap-2">
               <h1 className="text-2xl font-bold text-white">
                 Account Settings
               </h1>
-              <p className="text-blue-100 text-sm">{user?.email}</p>
+              <p className="text-blue-100 text-sm mt-2">
+                <span className=" text-sm bg-white/20 text-white border border-white/30 px-3 py-1 rounded-full">
+                  {user?.email}{" "}
+                </span>
+                {userRole && (
+                  <span
+                    className={`px-3 py-1 ml-2 mt-2 text-xs font-semibold rounded-full ${
+                      userRole === "admin"
+                        ? "bg-yellow-500/20 text-yellow-200 border border-yellow-400/30"
+                        : "bg-white/20 text-white border border-white/30"
+                    }`}
+                  >
+                    {userRole === "admin" ? "Admin" : "FitNinja"}
+                  </span>
+                )}
+              </p>
             </div>
           </div>
         </div>
@@ -204,6 +219,7 @@ export default function Account() {
             <h2 className="text-lg font-semibold text-white mb-4">
               Personal Information
             </h2>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label
@@ -451,4 +467,3 @@ export default function Account() {
     </div>
   );
 }
-
