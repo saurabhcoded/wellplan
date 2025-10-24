@@ -9,6 +9,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import WorkoutSession from "./WorkoutSession";
 import LoadingSpinner from "./LoadingSpinner";
+import PhysicalProgressLogger from "./PhysicalProgressLogger";
 import {
   CheckCircle2,
   Circle,
@@ -699,6 +700,9 @@ export default function DailyTracker() {
             </div>
           </div>
         </div>
+
+        {/* Physical Progress Logger */}
+        <PhysicalProgressLogger />
 
         <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
           <div className="flex items-center justify-between mb-4">

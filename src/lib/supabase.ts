@@ -2,12 +2,14 @@ import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const storageBucket = import.meta.env.VITE_STORAGE_BUCKET || "wellplan-bucket";
 
 if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables');
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const STORAGE_BUCKET = storageBucket;
 
 export type Profile = {
   id: string;
@@ -103,4 +105,18 @@ export type PublishedWorkoutDay = {
   workout_name: string;
   exercises: Exercise[];
   created_at: string;
+};
+
+export type MediaResource = {
+  id: string;
+  user_id: string;
+  resource_type: "progress_photo" | "workout_video" | "other";
+  file_path: string;
+  file_name: string;
+  mime_type: string | null;
+  file_size: number | null;
+  description: string | null;
+  taken_at: string;
+  created_at: string;
+  updated_at: string;
 };
