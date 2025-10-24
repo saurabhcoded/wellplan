@@ -1,14 +1,22 @@
-import { useState, useEffect } from 'react';
-import toast from 'react-hot-toast';
+import { useState } from "react";
 import {
   supabase,
   WorkoutPlan,
-  WorkoutDay,
   Exercise,
   PublishedPlan,
   PublishedWorkoutDay,
 } from "../lib/supabase";
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from "../contexts/AuthContext";
+import {
+  useWorkoutPlans,
+  useWorkoutDays,
+  usePublishedPlans,
+  useCreatePlan,
+  useDeletePlan,
+  useActivatePlan,
+  useUpdateWorkoutDay,
+  useCopyPublishedPlan,
+} from "../hooks/useWorkoutPlans";
 import {
   Plus,
   Trash2,
@@ -36,9 +44,21 @@ const DAYS = [
 
 export default function WorkoutPlanner() {
   const { user } = useAuth();
-  const [plans, setPlans] = useState<WorkoutPlan[]>([]);
-  const [activePlan, setActivePlan] = useState<WorkoutPlan | null>(null);
-  const [workoutDays, setWorkoutDays] = useState<WorkoutDay[]>([]);
+
+  // TanStack Query hooks
+  const { data: plans = [] } = useWorkoutPlans(user?.id);
+  const activePlan = plans.find((p) => p.is_active) || null;
+  const { data: workoutDays = [] } = useWorkoutDays(activePlan?.id);
+  const { data: publishedPlans = [] } = usePublishedPlans();
+
+  // Mutations
+  const createPlanMutation = useCreatePlan();
+  const deletePlanMutation = useDeletePlan();
+  const activatePlanMutation = useActivatePlan();
+  const updateWorkoutDayMutation = useUpdateWorkoutDay();
+  const copyPublishedPlanMutation = useCopyPublishedPlan();
+
+  // Local state
   const [isCreating, setIsCreating] = useState(false);
   const [newPlanName, setNewPlanName] = useState("");
   const [editingDay, setEditingDay] = useState<number | null>(null);
@@ -51,7 +71,6 @@ export default function WorkoutPlanner() {
   const [isExercisesExpanded, setIsExercisesExpanded] = useState(false);
 
   // Published plans state
-  const [publishedPlans, setPublishedPlans] = useState<PublishedPlan[]>([]);
   const [expandedPublishedPlan, setExpandedPublishedPlan] = useState<
     string | null
   >(null);
@@ -59,91 +78,25 @@ export default function WorkoutPlanner() {
     [key: string]: PublishedWorkoutDay[];
   }>({});
   const [copying, setCopying] = useState<string | null>(null);
-
-  useEffect(() => {
-    loadPlans();
-    loadPublishedPlans();
-  }, [user]);
-
-  useEffect(() => {
-    if (activePlan) {
-      loadWorkoutDays(activePlan.id);
-    }
-  }, [activePlan]);
-
-  const loadPlans = async () => {
-    if (!user) return;
-
-    const { data } = await supabase
-      .from("workout_plans")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false });
-
-    if (data) {
-      setPlans(data);
-      const active = data.find((p) => p.is_active);
-      if (active) setActivePlan(active);
-    }
-  };
-
-  const loadWorkoutDays = async (planId: string) => {
-    const { data } = await supabase
-      .from("workout_days")
-      .select("*")
-      .eq("plan_id", planId)
-      .order("day_of_week");
-
-    if (data) setWorkoutDays(data);
-  };
-
   const createPlan = async () => {
     if (!user || !newPlanName.trim()) return;
 
-    const startDate = new Date();
-    const endDate = new Date();
-    endDate.setDate(endDate.getDate() + 7);
+    await createPlanMutation.mutateAsync({
+      userId: user.id,
+      name: newPlanName,
+    });
 
-    if (plans.length === 0) {
-      await supabase
-        .from("workout_plans")
-        .update({ is_active: false })
-        .eq("user_id", user.id);
-    }
-
-    const { data, error } = await supabase
-      .from("workout_plans")
-      .insert({
-        user_id: user.id,
-        name: newPlanName,
-        start_date: startDate.toISOString().split("T")[0],
-        end_date: endDate.toISOString().split("T")[0],
-        is_active: plans.length === 0,
-      })
-      .select()
-      .single();
-
-    if (data && !error) {
-      await loadPlans();
-      setNewPlanName("");
-      setIsCreating(false);
-    }
+    setNewPlanName("");
+    setIsCreating(false);
   };
 
   const setAsActivePlan = async (plan: WorkoutPlan) => {
     if (!user) return;
 
-    await supabase
-      .from("workout_plans")
-      .update({ is_active: false })
-      .eq("user_id", user.id);
-
-    await supabase
-      .from("workout_plans")
-      .update({ is_active: true })
-      .eq("id", plan.id);
-
-    await loadPlans();
+    await activatePlanMutation.mutateAsync({
+      userId: user.id,
+      planId: plan.id,
+    });
   };
 
   const startEditDay = (dayOfWeek: number) => {
@@ -210,31 +163,18 @@ export default function WorkoutPlanner() {
     const existing = workoutDays.find((d) => d.day_of_week === editingDay);
 
     if (existing) {
-      await supabase
-        .from("workout_days")
-        .update({
-          is_rest_day: dayConfig.isRestDay,
-          workout_name: dayConfig.workoutName,
-          exercises: dayConfig.exercises,
-        })
-        .eq("id", existing.id);
-    } else {
-      await supabase.from("workout_days").insert({
-        plan_id: activePlan.id,
-        day_of_week: editingDay,
-        is_rest_day: dayConfig.isRestDay,
-        workout_name: dayConfig.workoutName,
+      await updateWorkoutDayMutation.mutateAsync({
+        dayId: existing.id,
         exercises: dayConfig.exercises,
+        isRestDay: dayConfig.isRestDay,
       });
     }
 
-    await loadWorkoutDays(activePlan.id);
     setEditingDay(null);
   };
 
   const deletePlan = async (planId: string) => {
-    await supabase.from("workout_plans").delete().eq("id", planId);
-    await loadPlans();
+    await deletePlanMutation.mutateAsync(planId);
   };
 
   const toggleDayExpanded = (dayIndex: number) => {
@@ -250,17 +190,6 @@ export default function WorkoutPlanner() {
   };
 
   // Published plans functions
-  const loadPublishedPlans = async () => {
-    const { data } = await supabase
-      .from("published_plans")
-      .select("*")
-      .eq("is_published", true)
-      .order("created_at", { ascending: false });
-
-    if (data) {
-      setPublishedPlans(data);
-    }
-  };
 
   const loadPublishedWorkoutDays = async (planId: string) => {
     if (publishedWorkoutDays[planId]) return; // Already loaded
@@ -302,56 +231,14 @@ export default function WorkoutPlanner() {
         days = data || [];
       }
 
-      // Create new workout plan
-      const startDate = new Date();
-      const endDate = new Date();
-      endDate.setDate(
-        endDate.getDate() + (publishedPlan.duration_weeks || 1) * 7
-      );
-
-      const { data: newPlan, error: planError } = await supabase
-        .from("workout_plans")
-        .insert({
-          user_id: user.id,
-          name: publishedPlan.name,
-          start_date: startDate.toISOString().split("T")[0],
-          end_date: endDate.toISOString().split("T")[0],
-          is_active: false,
-          source_published_plan_id: publishedPlan.id,
-        })
-        .select()
-        .single();
-
-      if (planError || !newPlan) {
-        throw planError;
-      }
-
-      // Copy workout days
-      const workoutDaysToInsert = days.map((day) => ({
-        plan_id: newPlan.id,
-        day_of_week: day.day_of_week,
-        is_rest_day: day.is_rest_day,
-        workout_name: day.workout_name,
-        exercises: day.exercises,
-      }));
-
-      const { error: daysError } = await supabase
-        .from("workout_days")
-        .insert(workoutDaysToInsert);
-
-      if (daysError) {
-        throw daysError;
-      }
-
-      toast.success(
-        `Successfully copied "${publishedPlan.name}" to your plans! You can now activate and customize it.`
-      );
-
-      // Reload user plans to show the new plan
-      await loadPlans();
+      await copyPublishedPlanMutation.mutateAsync({
+        userId: user.id,
+        publishedPlanId: publishedPlan.id,
+        planName: publishedPlan.name,
+        publishedDays: days,
+      });
     } catch (error) {
       console.error("Error copying plan:", error);
-      toast.error("Failed to copy plan. Please try again.");
     } finally {
       setCopying(null);
     }

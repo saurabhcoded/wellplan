@@ -1,9 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState } from "react";
 import toast from "react-hot-toast";
 import Swal from "sweetalert2";
-import { supabase } from "../lib/supabase";
 import { useAuth } from "../contexts/AuthContext";
 import LoadingSpinner from "./LoadingSpinner";
+import {
+  useExercises,
+  useCreateExercise,
+  useUpdateExercise,
+  useDeleteExercise,
+} from "../hooks/useExercises";
 import {
   Plus,
   Edit2,
@@ -31,8 +36,11 @@ interface Exercise {
 
 export default function ExerciseLibrary() {
   const { userRole, user } = useAuth();
-  const [exercises, setExercises] = useState<Exercise[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: exercises = [], isLoading: loading } = useExercises();
+  const createExerciseMutation = useCreateExercise();
+  const updateExerciseMutation = useUpdateExercise();
+  const deleteExerciseMutation = useDeleteExercise();
+
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
@@ -52,70 +60,27 @@ export default function ExerciseLibrary() {
 
   const isAdmin = userRole === "admin";
 
-  useEffect(() => {
-    fetchExercises();
-  }, []);
-
-  const fetchExercises = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("exercise_library")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-      setExercises(data || []);
-    } catch (error) {
-      console.error("Error fetching exercises:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!isAdmin || !user) return;
 
-    try {
-      if (editingExercise) {
-        // Update existing exercise
-        const { error } = await supabase
-          .from("exercise_library")
-          .update({
-            name: formData.name,
-            description: formData.description,
-            tags: formData.tags,
-            media_url: formData.media_url,
-            media_type: formData.media_type,
-          })
-          .eq("id", editingExercise.id);
-
-        if (error) throw error;
-      } else {
-        // Create new exercise
-        const { error } = await supabase.from("exercise_library").insert([
-          {
-            ...formData,
-            created_by: user.id,
-          },
-        ]);
-
-        if (error) throw error;
-      }
-
-      // Reset form and refresh
-      resetForm();
-      fetchExercises();
-      toast.success(
-        editingExercise
-          ? "Exercise updated successfully!"
-          : "Exercise created successfully!"
-      );
-    } catch (error) {
-      console.error("Error saving exercise:", error);
-      toast.error("Error saving exercise. Please try again.");
+    if (editingExercise) {
+      // Update existing exercise
+      await updateExerciseMutation.mutateAsync({
+        id: editingExercise.id,
+        exercise: formData,
+      });
+    } else {
+      // Create new exercise
+      await createExerciseMutation.mutateAsync({
+        exercise: formData,
+        userId: user.id,
+      });
     }
+
+    // Reset form
+    resetForm();
   };
 
   const handleDelete = async (id: string) => {
@@ -141,19 +106,7 @@ export default function ExerciseLibrary() {
 
     if (!result.isConfirmed) return;
 
-    try {
-      const { error } = await supabase
-        .from("exercise_library")
-        .delete()
-        .eq("id", id);
-
-      if (error) throw error;
-      fetchExercises();
-      toast.success("Exercise deleted successfully!");
-    } catch (error) {
-      console.error("Error deleting exercise:", error);
-      toast.error("Error deleting exercise. Please try again.");
-    }
+    await deleteExerciseMutation.mutateAsync(id);
   };
 
   const handleEdit = (exercise: Exercise) => {
@@ -711,4 +664,3 @@ export default function ExerciseLibrary() {
     </div>
   );
 }
-

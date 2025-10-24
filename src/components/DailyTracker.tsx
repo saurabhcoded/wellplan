@@ -1,15 +1,21 @@
 import { useState, useEffect } from 'react';
-import {
-  supabase,
-  DailyLog,
-  WeightLog,
-  WorkoutDay,
-  ExerciseLibraryItem,
-} from "../lib/supabase";
+import { ExerciseLibraryItem } from "../lib/supabase";
 import { useAuth } from '../contexts/AuthContext';
 import WorkoutSession from "./WorkoutSession";
 import LoadingSpinner from "./LoadingSpinner";
 import PhysicalProgressLogger from "./PhysicalProgressLogger";
+import {
+  useActivePlan,
+  useTodayWorkout,
+  useDailyLog,
+  useWeightLog,
+  usePreviousNotes,
+  useToggleExercise,
+  useSaveWeight,
+  useSaveNotes,
+  useCompleteWorkout,
+} from "../hooks/useDailyTracker";
+import { useExercises } from "../hooks/useExercises";
 import {
   CheckCircle2,
   Circle,
@@ -34,55 +40,70 @@ import {
 
 export default function DailyTracker() {
   const { user } = useAuth();
-  const [todayLog, setTodayLog] = useState<DailyLog | null>(null);
-  const [todayWorkout, setTodayWorkout] = useState<WorkoutDay | null>(null);
-  const [todayWeight, setTodayWeight] = useState<WeightLog | null>(null);
+  const today = new Date().toISOString().split("T")[0];
+  const dayOfWeek = new Date().getDay();
+
+  // Local state
   const [weight, setWeight] = useState("");
   const [unit, setUnit] = useState<"kg" | "lbs">("kg");
   const [notes, setNotes] = useState("");
   const [completedExercises, setCompletedExercises] = useState<string[]>([]);
-  const [previousNotes, setPreviousNotes] = useState<DailyLog[]>([]);
   const [showNotesHistory, setShowNotesHistory] = useState(false);
+
+  // TanStack Query hooks
+  const { data: activePlan } = useActivePlan(user?.id);
+  const { data: todayWorkout } = useTodayWorkout(activePlan?.id, dayOfWeek);
+  const { data: todayLog } = useDailyLog(user?.id, today);
+  const { data: todayWeight } = useWeightLog(user?.id, today);
+  const { data: exercises = [] } = useExercises();
+  const { data: previousNotes = [] } = usePreviousNotes(
+    user?.id,
+    showNotesHistory
+  );
+
+  // Mutations
+  const toggleExerciseMutation = useToggleExercise();
+  const saveWeightMutation = useSaveWeight();
+  const saveNotesMutation = useSaveNotes();
+  const completeWorkoutMutation = useCompleteWorkout();
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [calendarMonth, setCalendarMonth] = useState(new Date());
-  const [loading, setLoading] = useState(true);
   const [notesTextareaRef, setNotesTextareaRef] =
     useState<HTMLTextAreaElement | null>(null);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">(
     "idle"
   );
   const [showWorkoutSession, setShowWorkoutSession] = useState(false);
-  const [exerciseLibraryMap, setExerciseLibraryMap] = useState<
-    Map<string, ExerciseLibraryItem>
-  >(new Map());
   const [isWorkoutExpanded, setIsWorkoutExpanded] = useState(false);
 
-  const today = new Date().toISOString().split("T")[0];
-  const dayOfWeek = new Date().getDay();
+  // Build exercise library map from exercises data
+  const exerciseLibraryMap = new Map<string, ExerciseLibraryItem>();
+  exercises.forEach((exercise) => {
+    exerciseLibraryMap.set(exercise.id, exercise);
+  });
+
+  const loading = !activePlan && !todayWorkout && !todayLog;
+
+  // Update local state when data changes
+  useEffect(() => {
+    if (todayLog) {
+      setNotes(todayLog.notes || "");
+      setCompletedExercises(
+        Array.isArray(todayLog.completed_exercises)
+          ? todayLog.completed_exercises
+          : []
+      );
+    } else {
+      setCompletedExercises([]);
+    }
+  }, [todayLog]);
 
   useEffect(() => {
-    loadTodayData();
-    loadPreviousNotes();
-    loadExerciseLibrary();
-  }, [user]);
-
-  const loadExerciseLibrary = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("exercise_library")
-        .select("*");
-
-      if (error) throw error;
-
-      const libraryMap = new Map<string, ExerciseLibraryItem>();
-      data?.forEach((exercise) => {
-        libraryMap.set(exercise.id, exercise);
-      });
-      setExerciseLibraryMap(libraryMap);
-    } catch (error) {
-      console.error("Error loading exercise library:", error);
+    if (todayWeight) {
+      setWeight(todayWeight.weight.toString());
+      setUnit(todayWeight.unit);
     }
-  };
+  }, [todayWeight]);
 
   // Auto-save notes with debounce
   useEffect(() => {
@@ -95,100 +116,6 @@ export default function DailyTracker() {
 
     return () => clearTimeout(timeoutId);
   }, [notes, user]);
-
-  const loadTodayData = async () => {
-    if (!user) return;
-
-    setLoading(true);
-
-    const { data: activePlan } = await supabase
-      .from("workout_plans")
-      .select("id")
-      .eq("user_id", user.id)
-      .eq("is_active", true)
-      .maybeSingle();
-
-    if (activePlan) {
-      const { data: workoutDay } = await supabase
-        .from("workout_days")
-        .select("*")
-        .eq("plan_id", activePlan.id)
-        .eq("day_of_week", dayOfWeek)
-        .maybeSingle();
-
-      setTodayWorkout(workoutDay);
-    }
-
-    const { data: dailyLog } = await supabase
-      .from("daily_logs")
-      .select("*")
-      .eq("user_id", user.id)
-      .eq("log_date", today)
-      .maybeSingle();
-
-    if (dailyLog) {
-      setTodayLog(dailyLog);
-      setNotes(dailyLog.notes);
-      // Load completed exercises from the log
-      if (
-        dailyLog.completed_exercises &&
-        Array.isArray(dailyLog.completed_exercises)
-      ) {
-        setCompletedExercises(dailyLog.completed_exercises);
-      } else {
-        setCompletedExercises([]);
-      }
-    } else {
-      // Reset completed exercises if no log for today
-      setCompletedExercises([]);
-    }
-
-    const { data: weightLog } = await supabase
-      .from("weight_logs")
-      .select("*")
-      .eq("user_id", user.id)
-      .eq("log_date", today)
-      .maybeSingle();
-
-    if (weightLog) {
-      setTodayWeight(weightLog);
-      setWeight(weightLog.weight.toString());
-      setUnit(weightLog.unit);
-    }
-
-    setLoading(false);
-  };
-
-  const loadPreviousNotes = async () => {
-    if (!user) return;
-
-    // Load logs from the calendar month being viewed
-    const firstDay = new Date(
-      calendarMonth.getFullYear(),
-      calendarMonth.getMonth(),
-      1
-    );
-    const lastDay = new Date(
-      calendarMonth.getFullYear(),
-      calendarMonth.getMonth() + 1,
-      0
-    );
-    const startDateStr = firstDay.toISOString().split("T")[0];
-    const endDateStr = lastDay.toISOString().split("T")[0];
-
-    const { data: logs } = await supabase
-      .from("daily_logs")
-      .select("*")
-      .eq("user_id", user.id)
-      .gte("log_date", startDateStr)
-      .lte("log_date", endDateStr)
-      .order("log_date", { ascending: false });
-
-    if (logs) {
-      setPreviousNotes(logs);
-    }
-  };
-
   const getCalendarDays = () => {
     const year = calendarMonth.getFullYear();
     const month = calendarMonth.getMonth();
@@ -224,11 +151,7 @@ export default function DailyTracker() {
     setSelectedDate(null); // Reset selected date when changing months
   };
 
-  useEffect(() => {
-    if (showNotesHistory) {
-      loadPreviousNotes();
-    }
-  }, [calendarMonth, showNotesHistory]);
+  // Notes history is automatically loaded via usePreviousNotes hook when showNotesHistory is true
 
   const insertFormatting = (prefix: string, suffix: string = prefix) => {
     if (!notesTextareaRef) return;
@@ -334,43 +257,15 @@ export default function DailyTracker() {
     if (isCompleted) return;
 
     const newCompletedExercises = [...completedExercises, exerciseName];
-
     setCompletedExercises(newCompletedExercises);
 
-    // Check if all exercises are completed
-    const allExercisesCount = todayWorkout?.exercises.length || 0;
-    const workoutFullyCompleted =
-      newCompletedExercises.length === allExercisesCount &&
-      allExercisesCount > 0;
-
-    if (todayLog) {
-      const { data } = await supabase
-        .from("daily_logs")
-        .update({
-          completed_exercises: newCompletedExercises,
-          workout_completed: workoutFullyCompleted,
-        })
-        .eq("id", todayLog.id)
-        .select()
-        .single();
-
-      if (data) setTodayLog(data);
-    } else {
-      const { data } = await supabase
-        .from("daily_logs")
-        .insert({
-          user_id: user.id,
-          log_date: today,
-          workout_completed: workoutFullyCompleted,
-          workout_day_id: todayWorkout?.id || null,
-          notes: "",
-          completed_exercises: newCompletedExercises,
-        })
-        .select()
-        .single();
-
-      if (data) setTodayLog(data);
-    }
+    await toggleExerciseMutation.mutateAsync({
+      userId: user.id,
+      today,
+      exerciseName,
+      completedExercises,
+      todayLog: todayLog || null,
+    });
   };
 
   const saveWeight = async () => {
@@ -379,68 +274,27 @@ export default function DailyTracker() {
     const weightValue = parseFloat(weight);
     if (isNaN(weightValue)) return;
 
-    if (todayWeight) {
-      const { data } = await supabase
-        .from("weight_logs")
-        .update({ weight: weightValue, unit })
-        .eq("id", todayWeight.id)
-        .select()
-        .single();
-
-      if (data) setTodayWeight(data);
-    } else {
-      const { data } = await supabase
-        .from("weight_logs")
-        .insert({
-          user_id: user.id,
-          log_date: today,
-          weight: weightValue,
-          unit,
-        })
-        .select()
-        .single();
-
-      if (data) setTodayWeight(data);
-    }
+    await saveWeightMutation.mutateAsync({
+      userId: user.id,
+      today,
+      weight: weightValue,
+      unit,
+      weightLogId: todayWeight?.id,
+    });
   };
 
   const saveNotesAuto = async () => {
     if (!user) return;
 
     try {
-      if (todayLog) {
-        const { data } = await supabase
-          .from("daily_logs")
-          .update({ notes })
-          .eq("id", todayLog.id)
-          .select()
-          .single();
+      await saveNotesMutation.mutateAsync({
+        userId: user.id,
+        today,
+        notes,
+        todayLog: todayLog || null,
+      });
 
-        if (data) {
-          setTodayLog(data);
-          setSaveStatus("saved");
-          // If notes were cleared and history is showing, reload it
-          if (showNotesHistory) {
-            loadPreviousNotes();
-          }
-        }
-      } else {
-        const { data } = await supabase
-          .from("daily_logs")
-          .insert({
-            user_id: user.id,
-            log_date: today,
-            workout_completed: false,
-            notes,
-          })
-          .select()
-          .single();
-
-        if (data) {
-          setTodayLog(data);
-          setSaveStatus("saved");
-        }
-      }
+      setSaveStatus("saved");
 
       // Reset to idle after showing "saved" for 2 seconds
       setTimeout(() => setSaveStatus("idle"), 2000);
@@ -451,32 +305,18 @@ export default function DailyTracker() {
   };
 
   const handleWorkoutComplete = async (completed: string[]) => {
+    if (!user) return;
+
     // Don't close session here - let user continue or manually exit
     setCompletedExercises(completed);
 
     // Update the database
-    if (todayLog) {
-      await supabase
-        .from("daily_logs")
-        .update({
-          completed_exercises: completed,
-          workout_completed:
-            completed.length === todayWorkout?.exercises.length,
-        })
-        .eq("id", todayLog.id);
-    } else if (user) {
-      await supabase.from("daily_logs").insert({
-        user_id: user.id,
-        log_date: today,
-        workout_completed: completed.length === todayWorkout?.exercises.length,
-        workout_day_id: todayWorkout?.id || null,
-        notes: "",
-        completed_exercises: completed,
-      });
-    }
-
-    // Reload data to update the dashboard in background
-    loadTodayData();
+    await completeWorkoutMutation.mutateAsync({
+      userId: user.id,
+      today,
+      completedExercises: completed,
+      todayLog: todayLog || null,
+    });
   };
 
   if (loading) {
@@ -713,9 +553,6 @@ export default function DailyTracker() {
             <button
               onClick={() => {
                 setShowNotesHistory(!showNotesHistory);
-                if (!showNotesHistory) {
-                  loadPreviousNotes();
-                }
               }}
               className="flex items-center gap-1 px-3 py-1.5 text-sm text-slate-400 hover:text-white bg-slate-900 hover:bg-slate-700 rounded-lg transition"
             >

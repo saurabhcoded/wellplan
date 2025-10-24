@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
-import { supabase } from "../lib/supabase";
 import LoadingSpinner from "./LoadingSpinner";
+import { useProfile, useUpdateProfile } from "../hooks/useProfile";
 import {
   User,
   LogOut,
@@ -21,112 +21,58 @@ interface HealthMetrics {
 
 export default function Account() {
   const { user, userRole, signOut, deleteAccount } = useAuth();
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const { data: profile, isLoading: loading } = useProfile(user?.id);
+  const updateProfileMutation = useUpdateProfile();
+
   const [deleting, setDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [message, setMessage] = useState<{
     type: "success" | "error";
     text: string;
   } | null>(null);
+  const saving = updateProfileMutation.isPending;
   const [metrics, setMetrics] = useState<HealthMetrics>({
-    age: null,
-    height_cm: null,
+    age: profile?.age || null,
+    height_cm: profile?.height_cm || null,
     body_fat_percentage: null,
-    gender: null,
-    full_name: "",
+    gender: profile?.gender || null,
+    full_name: profile?.full_name || "",
   });
 
+  // Update local state when profile data changes
   useEffect(() => {
-    if (user) {
-      loadProfile();
-    }
-  }, [user]);
-
-  const loadProfile = async () => {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("full_name, age, height_cm, body_fat_percentage, gender")
-        .eq("id", user!.id)
-        .maybeSingle();
-
-      // If profile doesn't exist, create it
-      if (!data && !error) {
-        console.log("Profile not found, creating new profile...");
-        const { error: insertError } = await supabase.from("profiles").insert({
-          id: user!.id,
-          email: user!.email || "",
-          full_name: user!.user_metadata?.full_name || "",
-          age: user!.user_metadata?.age || null,
-          height_cm: user!.user_metadata?.height_cm || null,
-          body_fat_percentage: user!.user_metadata?.body_fat_percentage || null,
-          gender: user!.user_metadata?.gender || null,
-        });
-
-        if (insertError) {
-          console.error("Error creating profile:", insertError);
-          throw insertError;
-        }
-
-        // Set metrics from user metadata
-        setMetrics({
-          age: user!.user_metadata?.age || null,
-          height_cm: user!.user_metadata?.height_cm || null,
-          body_fat_percentage: user!.user_metadata?.body_fat_percentage || null,
-          gender: user!.user_metadata?.gender || null,
-          full_name: user!.user_metadata?.full_name || "",
-        });
-      } else if (error) {
-        throw error;
-      } else if (data) {
-        setMetrics({
-          age: data.age,
-          height_cm: data.height_cm,
-          body_fat_percentage: data.body_fat_percentage,
-          gender: data.gender,
-          full_name: data.full_name || "",
-        });
-      }
-    } catch (error) {
-      console.error("Error loading profile:", error);
-      setMessage({
-        type: "error",
-        text: "Failed to load profile data. Please try refreshing the page.",
+    if (profile) {
+      setMetrics({
+        age: profile.age || null,
+        height_cm: profile.height_cm || null,
+        body_fat_percentage: null,
+        gender: profile.gender || null,
+        full_name: profile.full_name || "",
       });
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [profile]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSaving(true);
+
+    if (!user) return;
+
     setMessage(null);
 
     try {
-      const { error } = await supabase
-        .from("profiles")
-        .update({
+      await updateProfileMutation.mutateAsync({
+        userId: user.id,
+        updates: {
           full_name: metrics.full_name,
-          age: metrics.age,
-          height_cm: metrics.height_cm,
-          body_fat_percentage: metrics.body_fat_percentage,
-          gender: metrics.gender,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", user!.id);
-
-      if (error) throw error;
-
+          age: metrics.age || undefined,
+          height_cm: metrics.height_cm || undefined,
+          gender: metrics.gender || undefined,
+        },
+      });
       setMessage({ type: "success", text: "Profile updated successfully!" });
       setTimeout(() => setMessage(null), 3000);
     } catch (error) {
-      console.error("Error updating profile:", error);
       setMessage({ type: "error", text: "Failed to update profile" });
-    } finally {
-      setSaving(false);
     }
   };
 

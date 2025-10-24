@@ -1,6 +1,11 @@
-import { useState, useEffect } from 'react';
-import { supabase, DailyLog, WeightLog } from '../lib/supabase';
-import { useAuth } from '../contexts/AuthContext';
+import { useState, useMemo } from "react";
+import { useAuth } from "../contexts/AuthContext";
+import {
+  useDailyLogs,
+  useWeightLogs,
+  useAllWeightLogs,
+} from "../hooks/useProgress";
+import { useProfile } from "../hooks/useProfile";
 import { Scale } from "lucide-react";
 import {
   XAxis,
@@ -21,92 +26,59 @@ type TimeRange = "week" | "month";
 export default function ProgressCharts() {
   const { user } = useAuth();
   const [timeRange, setTimeRange] = useState<TimeRange>("week");
-  const [weightLogs, setWeightLogs] = useState<WeightLog[]>([]);
-  const [dailyLogs, setDailyLogs] = useState<DailyLog[]>([]);
-  const [heightCm, setHeightCm] = useState<number | null>(null);
-  const [stats, setStats] = useState({
-    completedWorkouts: 0,
-    totalWorkouts: 0,
-    weightChange: 0,
-    startWeight: 0,
-    currentWeight: 0,
-  });
 
-  useEffect(() => {
-    loadData();
-    loadProfile();
-  }, [user, timeRange]);
-
-  const loadProfile = async () => {
-    if (!user) return;
-
-    const { data } = await supabase
-      .from("profiles")
-      .select("height_cm")
-      .eq("id", user.id)
-      .maybeSingle();
-
-    if (data?.height_cm) {
-      setHeightCm(data.height_cm);
-    }
-  };
-
-  const loadData = async () => {
-    if (!user) return;
-
-    let startDate: Date;
+  // Calculate date range based on timeRange
+  const { startDate, endDate } = useMemo(() => {
+    let start: Date;
     if (timeRange === "week") {
       // Get Monday of current week
-      startDate = new Date();
-      const dayOfWeek = startDate.getDay();
-      const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // If Sunday, go back 6 days, else go to Monday
-      startDate.setDate(startDate.getDate() + diff);
+      start = new Date();
+      const dayOfWeek = start.getDay();
+      const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+      start.setDate(start.getDate() + diff);
     } else {
       // Get 1st of current month
-      startDate = new Date();
-      startDate.setDate(1);
+      start = new Date();
+      start.setDate(1);
     }
-    const startDateStr = startDate.toISOString().split("T")[0];
+    const end = new Date();
+    return {
+      startDate: start.toISOString().split("T")[0],
+      endDate: end.toISOString().split("T")[0],
+    };
+  }, [timeRange]);
 
-    const { data: weights } = await supabase
-      .from("weight_logs")
-      .select("*")
-      .eq("user_id", user.id)
-      .gte("log_date", startDateStr)
-      .order("log_date");
+  // Fetch data using TanStack Query hooks
+  const { data: profile } = useProfile(user?.id);
+  const { data: weightLogs = [] } = useWeightLogs(user?.id, startDate, endDate);
+  const { data: dailyLogs = [] } = useDailyLogs(user?.id, startDate, endDate);
+  const { data: allWeightLogs = [] } = useAllWeightLogs(user?.id);
 
-    const { data: logs } = await supabase
-      .from("daily_logs")
-      .select("*")
-      .eq("user_id", user.id)
-      .gte("log_date", startDateStr)
-      .order("log_date");
+  // Calculate stats
+  const stats = useMemo(() => {
+    const completedWorkouts = dailyLogs.filter(
+      (log) => log.workout_completed
+    ).length;
+    const totalWorkouts = dailyLogs.length;
 
-    if (weights) setWeightLogs(weights);
-    if (logs) setDailyLogs(logs);
+    let weightChange = 0;
+    let startWeight = 0;
+    let currentWeight = 0;
 
-    if (weights && weights.length > 0) {
-      const start = weights[0].weight;
-      const current = weights[weights.length - 1].weight;
-      const change = current - start;
-
-      setStats((prev) => ({
-        ...prev,
-        weightChange: change,
-        startWeight: start,
-        currentWeight: current,
-      }));
+    if (allWeightLogs.length > 0) {
+      startWeight = allWeightLogs[0].weight;
+      currentWeight = allWeightLogs[allWeightLogs.length - 1].weight;
+      weightChange = currentWeight - startWeight;
     }
 
-    if (logs) {
-      const completed = logs.filter((log) => log.workout_completed).length;
-      setStats((prev) => ({
-        ...prev,
-        completedWorkouts: completed,
-        totalWorkouts: logs.length,
-      }));
-    }
-  };
+    return {
+      completedWorkouts,
+      totalWorkouts,
+      weightChange,
+      startWeight,
+      currentWeight,
+    };
+  }, [dailyLogs, allWeightLogs]);
 
   const getDateLabels = () => {
     const labels: string[] = [];
@@ -250,7 +222,10 @@ export default function ProgressCharts() {
           unit={weightLogs[0]?.unit || "kg"}
         />
         <StreakCard dailyLogs={dailyLogs} />
-        <BMICard currentWeight={stats.currentWeight} heightCm={heightCm} />
+        <BMICard
+          currentWeight={stats.currentWeight}
+          heightCm={profile?.height_cm || null}
+        />
       </div>
 
       <div className="bg-slate-800 rounded-xl p-6 border border-slate-700 mb-6">

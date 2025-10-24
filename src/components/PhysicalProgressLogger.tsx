@@ -11,6 +11,7 @@ import {
 import { useAuth } from "../contexts/AuthContext";
 import { Upload, X, Image as ImageIcon, Loader2, Trash2 } from "lucide-react";
 import LoadingSpinner from "./LoadingSpinner";
+import { usePhotos, useUploadPhoto, useDeletePhoto } from "../hooks/usePhysicalProgress";
 
 interface PhotoWithUrl extends MediaResource {
   signedUrl?: string;
@@ -18,46 +19,38 @@ interface PhotoWithUrl extends MediaResource {
 
 export default function PhysicalProgressLogger() {
   const { user } = useAuth();
-  const [photos, setPhotos] = useState<PhotoWithUrl[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
+  const { data: photosData = [], isLoading: loading } = usePhotos(user?.id);
+  const uploadPhotoMutation = useUploadPhoto();
+  const deletePhotoMutation = useDeletePhoto();
+
   const [selectedPhoto, setSelectedPhoto] = useState<PhotoWithUrl | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const uploading = uploadPhotoMutation.isPending;
 
+  // Transform photos to include signed URLs
+  const [photos, setPhotos] = useState<PhotoWithUrl[]>([]);
+
+  // Load signed URLs for photos
   useEffect(() => {
-    loadPhotos();
-  }, [user]);
+    const loadSignedUrls = async () => {
+      if (photosData.length > 0) {
+        const photosWithUrls = await Promise.all(
+          photosData.map(async (photo) => {
+            const { data: urlData } = await supabase.storage
+              .from(STORAGE_BUCKET)
+              .createSignedUrl(photo.file_path, 3600);
 
-  const loadPhotos = async () => {
-    if (!user) return;
-
-    setLoading(true);
-    const { data, error } = await supabase
-      .from("media_resources")
-      .select("*")
-      .eq("user_id", user.id)
-      .eq("resource_type", "progress_photo")
-      .order("taken_at", { ascending: false })
-      .limit(10);
-
-    if (data && !error) {
-      // Get signed URLs for each photo (valid for 1 hour)
-      const photosWithUrls = await Promise.all(
-        data.map(async (photo) => {
-          const { data: urlData } = await supabase.storage
-            .from(STORAGE_BUCKET)
-            .createSignedUrl(photo.file_path, 3600); // 1 hour expiry
-
-          return {
-            ...photo,
-            signedUrl: urlData?.signedUrl || undefined,
-          };
-        })
-      );
-      setPhotos(photosWithUrls);
-    }
-    setLoading(false);
-  };
+            return {
+              ...photo,
+              signedUrl: urlData?.signedUrl || undefined,
+            } as unknown as PhotoWithUrl;
+          })
+        );
+        setPhotos(photosWithUrls);
+      }
+    };
+    loadSignedUrls();
+  }, [photosData]);
 
   const compressImage = async (file: File): Promise<File> => {
     return new Promise((resolve, reject) => {
@@ -127,10 +120,8 @@ export default function PhysicalProgressLogger() {
     });
   };
 
-  const uploadPhoto = async (file: File, isCamera: boolean = false) => {
+  const uploadPhoto = async (file: File) => {
     if (!user) return;
-
-    setUploading(true);
 
     try {
       // Validate file
@@ -162,72 +153,21 @@ export default function PhysicalProgressLogger() {
         }
       }
 
-      // Create unique filename
-      const timestamp = new Date().getTime();
-      const fileExt = fileToUpload.name.split(".").pop();
-      const fileName = `photo_${timestamp}.${fileExt}`;
-      const filePath = `${user.id}/progress/${fileName}`;
-
-      // Upload to Supabase Storage
-      const { error: uploadError } = await supabase.storage
-        .from(STORAGE_BUCKET)
-        .upload(filePath, fileToUpload, {
-          cacheControl: "3600",
-          upsert: false,
-        });
-
-      if (uploadError) {
-        console.error("Upload error:", uploadError);
-        throw uploadError;
-      }
-
-      // Save metadata to database
-      const { data, error: dbError } = await supabase
-        .from("media_resources")
-        .insert({
-          user_id: user.id,
-          resource_type: "progress_photo",
-          file_path: filePath,
-          file_name: fileName,
-          mime_type: fileToUpload.type,
-          file_size: fileToUpload.size,
-          description: isCamera ? "Camera capture" : "Uploaded photo",
-          taken_at: new Date().toISOString(),
-        })
-        .select()
-        .single();
-
-      if (dbError) {
-        console.error("Database error:", dbError);
-        throw dbError;
-      }
-
-      if (data) {
-        // Get signed URL for the new photo
-        const { data: urlData } = await supabase.storage
-          .from(STORAGE_BUCKET)
-          .createSignedUrl(data.file_path, 3600);
-
-        const photoWithUrl = {
-          ...data,
-          signedUrl: urlData?.signedUrl || undefined,
-        };
-
-        setPhotos([photoWithUrl, ...photos]);
-        toast.success("Progress photo added successfully!");
-      }
+      // Upload using mutation
+      await uploadPhotoMutation.mutateAsync({
+        userId: user.id,
+        file: file,
+        compressedBlob: fileToUpload,
+      });
     } catch (error) {
       console.error("Error uploading photo:", error);
-      toast.error("Failed to upload photo. Please try again.");
-    } finally {
-      setUploading(false);
     }
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      uploadPhoto(file, false);
+      uploadPhoto(file);
     }
     // Reset input
     if (fileInputRef.current) {
@@ -256,32 +196,11 @@ export default function PhysicalProgressLogger() {
 
     if (!result.isConfirmed) return;
 
-    try {
-      // Delete from storage
-      const { error: storageError } = await supabase.storage
-        .from(STORAGE_BUCKET)
-        .remove([photo.file_path]);
-
-      if (storageError) {
-        console.error("Storage delete error:", storageError);
-      }
-
-      // Delete from database
-      const { error: dbError } = await supabase
-        .from("media_resources")
-        .delete()
-        .eq("id", photo.id);
-
-      if (dbError) {
-        throw dbError;
-      }
-
-      setPhotos(photos.filter((p) => p.id !== photo.id));
-      toast.success("Photo deleted successfully");
-    } catch (error) {
-      console.error("Error deleting photo:", error);
-      toast.error("Failed to delete photo. Please try again.");
-    }
+    await deletePhotoMutation.mutateAsync({
+      photoId: photo.id,
+      filePath: photo.file_path,
+    });
+    setSelectedPhoto(null);
   };
 
   if (loading) {
