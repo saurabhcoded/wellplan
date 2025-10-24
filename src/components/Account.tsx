@@ -1,7 +1,11 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import LoadingSpinner from "./LoadingSpinner";
-import { useProfile, useUpdateProfile } from "../hooks/useProfile";
+import {
+  useProfile,
+  useUpdateProfile,
+  useCreateProfile,
+} from "../hooks/useProfile";
 import {
   User,
   LogOut,
@@ -23,6 +27,7 @@ export default function Account() {
   const { user, userRole, signOut, deleteAccount } = useAuth();
   const { data: profile, isLoading: loading } = useProfile(user?.id);
   const updateProfileMutation = useUpdateProfile();
+  const createProfileMutation = useCreateProfile();
 
   const [deleting, setDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -38,6 +43,18 @@ export default function Account() {
     gender: profile?.gender || null,
     full_name: profile?.full_name || "",
   });
+
+  // Create profile if it doesn't exist (fallback)
+  useEffect(() => {
+    if (user && !loading && !profile && !createProfileMutation.isPending) {
+      console.log("Profile not found, creating profile for user:", user.email);
+      createProfileMutation.mutate({
+        userId: user.id,
+        email: user.email || "",
+        fullName: user.user_metadata?.full_name,
+      });
+    }
+  }, [user, profile, loading]);
 
   // Update local state when profile data changes
   useEffect(() => {

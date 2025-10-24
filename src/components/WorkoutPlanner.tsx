@@ -1,4 +1,5 @@
 import { useState } from "react";
+import toast from "react-hot-toast";
 import {
   supabase,
   WorkoutPlan,
@@ -7,6 +8,7 @@ import {
   PublishedWorkoutDay,
 } from "../lib/supabase";
 import { useAuth } from "../contexts/AuthContext";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   useWorkoutPlans,
   useWorkoutDays,
@@ -44,6 +46,7 @@ const DAYS = [
 
 export default function WorkoutPlanner() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
 
   // TanStack Query hooks
   const { data: plans = [] } = useWorkoutPlans(user?.id);
@@ -68,7 +71,6 @@ export default function WorkoutPlanner() {
     exercises: Exercise[];
   }>({ isRestDay: false, workoutName: "", exercises: [] });
   const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set());
-  const [isExercisesExpanded, setIsExercisesExpanded] = useState(false);
 
   // Published plans state
   const [expandedPublishedPlan, setExpandedPublishedPlan] = useState<
@@ -110,7 +112,6 @@ export default function WorkoutPlanner() {
     } else {
       setDayConfig({ isRestDay: false, workoutName: "", exercises: [] });
     }
-    setIsExercisesExpanded(false); // Start collapsed when opening modal
     setEditingDay(dayOfWeek);
   };
 
@@ -162,15 +163,39 @@ export default function WorkoutPlanner() {
 
     const existing = workoutDays.find((d) => d.day_of_week === editingDay);
 
-    if (existing) {
-      await updateWorkoutDayMutation.mutateAsync({
-        dayId: existing.id,
-        exercises: dayConfig.exercises,
-        isRestDay: dayConfig.isRestDay,
-      });
-    }
+    try {
+      if (existing) {
+        // Update existing workout day
+        await updateWorkoutDayMutation.mutateAsync({
+          dayId: existing.id,
+          exercises: dayConfig.exercises,
+          isRestDay: dayConfig.isRestDay,
+        });
+      } else {
+        // Create new workout day
+        const { error } = await supabase.from("workout_days").insert({
+          plan_id: activePlan.id,
+          day_of_week: editingDay,
+          exercises: dayConfig.exercises,
+          is_rest_day: dayConfig.isRestDay,
+        });
 
-    setEditingDay(null);
+        if (error) throw error;
+
+        // Invalidate queries to refresh the workout days list
+        queryClient.invalidateQueries({
+          queryKey: ["workoutDays", activePlan.id],
+        });
+        queryClient.invalidateQueries({ queryKey: ["todayWorkout"] });
+
+        toast.success("Workout day created successfully!");
+      }
+
+      setEditingDay(null);
+    } catch (error) {
+      console.error("Error saving workout day:", error);
+      toast.error("Failed to save workout day. Please try again.");
+    }
   };
 
   const deletePlan = async (planId: string) => {
@@ -501,40 +526,19 @@ export default function WorkoutPlanner() {
                       <label className="block text-sm font-medium text-slate-300">
                         Exercises ({dayConfig.exercises.length})
                       </label>
-                      <div className="flex gap-2">
-                        {dayConfig.exercises.length > 0 && (
-                          <button
-                            onClick={() =>
-                              setIsExercisesExpanded(!isExercisesExpanded)
-                            }
-                            className="flex items-center gap-1 px-3 py-1 bg-slate-700 hover:bg-slate-600 text-white text-sm rounded-lg transition"
-                          >
-                            {isExercisesExpanded ? (
-                              <>
-                                <ChevronUp className="w-4 h-4" />
-                                Hide All
-                              </>
-                            ) : (
-                              <>
-                                <ChevronDown className="w-4 h-4" />
-                                Show All
-                              </>
-                            )}
-                          </button>
-                        )}
-                        <button
-                          onClick={addExercise}
-                          className="flex items-center gap-1 px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded-lg transition"
-                        >
-                          <Plus className="w-4 h-4" />
-                          Add Exercise
-                        </button>
-                      </div>
+                      <button
+                        onClick={addExercise}
+                        className="flex items-center gap-1 px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded-lg transition"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Add Exercise
+                      </button>
                     </div>
 
-                    {isExercisesExpanded ? (
-                      <div className="space-y-3">
-                        {dayConfig.exercises.map((exercise, i) => (
+                    {/* Fixed height scrollable container */}
+                    <div className="overflow-y-auto space-y-3 pr-2">
+                      {dayConfig.exercises.length > 0 ? (
+                        dayConfig.exercises.map((exercise, i) => (
                           <div
                             key={i}
                             className="bg-slate-900 p-3 rounded-lg space-y-2"
@@ -616,21 +620,13 @@ export default function WorkoutPlanner() {
                               </span>
                             </div>
                           </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-slate-400 text-sm p-4 bg-slate-900 rounded-lg text-center">
-                        {dayConfig.exercises.length > 0 ? (
-                          <>
-                            {dayConfig.exercises.length} exercise
-                            {dayConfig.exercises.length !== 1 ? "s" : ""}{" "}
-                            configured
-                          </>
-                        ) : (
-                          "No exercises added yet"
-                        )}
-                      </div>
-                    )}
+                        ))
+                      ) : (
+                        <div className="text-slate-400 text-sm p-4 bg-slate-900 rounded-lg text-center">
+                          No exercises added yet
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </>
               )}

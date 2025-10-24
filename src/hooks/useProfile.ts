@@ -26,6 +26,31 @@ const fetchProfile = async (userId: string): Promise<Profile | null> => {
   return data;
 };
 
+// Create profile (fallback if trigger fails)
+const createProfile = async ({
+  userId,
+  email,
+  fullName,
+}: {
+  userId: string;
+  email: string;
+  fullName?: string;
+}): Promise<Profile> => {
+  const { data, error } = await supabase
+    .from("profiles")
+    .insert({
+      id: userId,
+      email,
+      full_name: fullName || email.split("@")[0],
+      role: "fitninja",
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+};
+
 // Update profile
 const updateProfile = async ({
   userId,
@@ -52,6 +77,21 @@ export const useProfile = (userId: string | undefined) => {
     queryFn: () => fetchProfile(userId!),
     enabled: !!userId,
     staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+};
+
+export const useCreateProfile = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: createProfile,
+    onSuccess: (data, variables) => {
+      queryClient.setQueryData(["profile", variables.userId], data);
+      console.log("Profile created successfully:", data);
+    },
+    onError: (error) => {
+      console.error("Error creating profile:", error);
+    },
   });
 };
 

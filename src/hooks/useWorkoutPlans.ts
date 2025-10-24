@@ -90,9 +90,19 @@ export const useCreatePlan = () => {
 
   return useMutation({
     mutationFn: async ({ userId, name }: { userId: string; name: string }) => {
+      const startDate = new Date();
+      const endDate = new Date();
+      endDate.setDate(endDate.getDate() + 7); // Default 1 week duration
+
       const { data, error } = await supabase
         .from("workout_plans")
-        .insert({ user_id: userId, name, is_active: false })
+        .insert({
+          user_id: userId,
+          name,
+          is_active: false,
+          start_date: startDate.toISOString().split("T")[0],
+          end_date: endDate.toISOString().split("T")[0],
+        })
         .select()
         .single();
 
@@ -100,7 +110,9 @@ export const useCreatePlan = () => {
       return data;
     },
     onSuccess: (data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["workoutPlans", variables.userId] });
+      queryClient.invalidateQueries({
+        queryKey: ["workoutPlans", variables.userId],
+      });
       toast.success("Plan created successfully!");
     },
     onError: () => {
@@ -162,7 +174,13 @@ export const useActivatePlan = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ userId, planId }: { userId: string; planId: string }) => {
+    mutationFn: async ({
+      userId,
+      planId,
+    }: {
+      userId: string;
+      planId: string;
+    }) => {
       // Deactivate all plans first
       await supabase
         .from("workout_plans")
@@ -181,8 +199,12 @@ export const useActivatePlan = () => {
       return data;
     },
     onSuccess: (data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["workoutPlans", variables.userId] });
-      queryClient.invalidateQueries({ queryKey: ["activePlan", variables.userId] });
+      queryClient.invalidateQueries({
+        queryKey: ["workoutPlans", variables.userId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["activePlan", variables.userId],
+      });
       toast.success("Plan activated successfully!");
     },
     onError: () => {
@@ -242,6 +264,13 @@ export const useCopyPublishedPlan = () => {
       planName: string;
       publishedDays: any[];
     }) => {
+      // Calculate duration based on number of workout days (default to 4 weeks)
+      const startDate = new Date();
+      const endDate = new Date();
+      const durationWeeks =
+        publishedDays.length > 0 ? Math.ceil(publishedDays.length / 7) : 4;
+      endDate.setDate(endDate.getDate() + durationWeeks * 7);
+
       // Create new plan
       const { data: newPlan, error: planError } = await supabase
         .from("workout_plans")
@@ -250,6 +279,8 @@ export const useCopyPublishedPlan = () => {
           name: planName,
           is_active: false,
           source_published_plan_id: publishedPlanId,
+          start_date: startDate.toISOString().split("T")[0],
+          end_date: endDate.toISOString().split("T")[0],
         })
         .select()
         .single();
