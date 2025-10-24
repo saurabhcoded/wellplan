@@ -1,10 +1,25 @@
 import { useState, useEffect } from 'react';
 import { supabase, WorkoutPlan, WorkoutDay, Exercise } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Plus, Trash2, Save, Calendar } from 'lucide-react';
+import {
+  Plus,
+  Trash2,
+  Save,
+  Calendar,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
 import ExerciseAutocomplete from "./ExerciseAutocomplete";
 
-const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const DAYS = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+];
 
 export default function WorkoutPlanner() {
   const { user } = useAuth();
@@ -12,13 +27,15 @@ export default function WorkoutPlanner() {
   const [activePlan, setActivePlan] = useState<WorkoutPlan | null>(null);
   const [workoutDays, setWorkoutDays] = useState<WorkoutDay[]>([]);
   const [isCreating, setIsCreating] = useState(false);
-  const [newPlanName, setNewPlanName] = useState('');
+  const [newPlanName, setNewPlanName] = useState("");
   const [editingDay, setEditingDay] = useState<number | null>(null);
   const [dayConfig, setDayConfig] = useState<{
     isRestDay: boolean;
     workoutName: string;
     exercises: Exercise[];
-  }>({ isRestDay: false, workoutName: '', exercises: [] });
+  }>({ isRestDay: false, workoutName: "", exercises: [] });
+  const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set());
+  const [isExercisesExpanded, setIsExercisesExpanded] = useState(false);
 
   useEffect(() => {
     loadPlans();
@@ -34,24 +51,24 @@ export default function WorkoutPlanner() {
     if (!user) return;
 
     const { data } = await supabase
-      .from('workout_plans')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
+      .from("workout_plans")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false });
 
     if (data) {
       setPlans(data);
-      const active = data.find(p => p.is_active);
+      const active = data.find((p) => p.is_active);
       if (active) setActivePlan(active);
     }
   };
 
   const loadWorkoutDays = async (planId: string) => {
     const { data } = await supabase
-      .from('workout_days')
-      .select('*')
-      .eq('plan_id', planId)
-      .order('day_of_week');
+      .from("workout_days")
+      .select("*")
+      .eq("plan_id", planId)
+      .order("day_of_week");
 
     if (data) setWorkoutDays(data);
   };
@@ -65,18 +82,18 @@ export default function WorkoutPlanner() {
 
     if (plans.length === 0) {
       await supabase
-        .from('workout_plans')
+        .from("workout_plans")
         .update({ is_active: false })
-        .eq('user_id', user.id);
+        .eq("user_id", user.id);
     }
 
     const { data, error } = await supabase
-      .from('workout_plans')
+      .from("workout_plans")
       .insert({
         user_id: user.id,
         name: newPlanName,
-        start_date: startDate.toISOString().split('T')[0],
-        end_date: endDate.toISOString().split('T')[0],
+        start_date: startDate.toISOString().split("T")[0],
+        end_date: endDate.toISOString().split("T")[0],
         is_active: plans.length === 0,
       })
       .select()
@@ -84,7 +101,7 @@ export default function WorkoutPlanner() {
 
     if (data && !error) {
       await loadPlans();
-      setNewPlanName('');
+      setNewPlanName("");
       setIsCreating(false);
     }
   };
@@ -93,20 +110,20 @@ export default function WorkoutPlanner() {
     if (!user) return;
 
     await supabase
-      .from('workout_plans')
+      .from("workout_plans")
       .update({ is_active: false })
-      .eq('user_id', user.id);
+      .eq("user_id", user.id);
 
     await supabase
-      .from('workout_plans')
+      .from("workout_plans")
       .update({ is_active: true })
-      .eq('id', plan.id);
+      .eq("id", plan.id);
 
     await loadPlans();
   };
 
   const startEditDay = (dayOfWeek: number) => {
-    const existing = workoutDays.find(d => d.day_of_week === dayOfWeek);
+    const existing = workoutDays.find((d) => d.day_of_week === dayOfWeek);
     if (existing) {
       setDayConfig({
         isRestDay: existing.is_rest_day,
@@ -114,8 +131,9 @@ export default function WorkoutPlanner() {
         exercises: existing.exercises || [],
       });
     } else {
-      setDayConfig({ isRestDay: false, workoutName: '', exercises: [] });
+      setDayConfig({ isRestDay: false, workoutName: "", exercises: [] });
     }
+    setIsExercisesExpanded(false); // Start collapsed when opening modal
     setEditingDay(dayOfWeek);
   };
 
@@ -129,8 +147,12 @@ export default function WorkoutPlanner() {
     }));
   };
 
-  const updateExercise = (index: number, field: keyof Exercise, value: string | number) => {
-    setDayConfig(prev => ({
+  const updateExercise = (
+    index: number,
+    field: keyof Exercise,
+    value: string | number
+  ) => {
+    setDayConfig((prev) => ({
       ...prev,
       exercises: prev.exercises.map((ex, i) =>
         i === index ? { ...ex, [field]: value } : ex
@@ -152,7 +174,7 @@ export default function WorkoutPlanner() {
   };
 
   const removeExercise = (index: number) => {
-    setDayConfig(prev => ({
+    setDayConfig((prev) => ({
       ...prev,
       exercises: prev.exercises.filter((_, i) => i !== index),
     }));
@@ -161,27 +183,25 @@ export default function WorkoutPlanner() {
   const saveDayConfig = async () => {
     if (!activePlan || editingDay === null) return;
 
-    const existing = workoutDays.find(d => d.day_of_week === editingDay);
+    const existing = workoutDays.find((d) => d.day_of_week === editingDay);
 
     if (existing) {
       await supabase
-        .from('workout_days')
+        .from("workout_days")
         .update({
           is_rest_day: dayConfig.isRestDay,
           workout_name: dayConfig.workoutName,
           exercises: dayConfig.exercises,
         })
-        .eq('id', existing.id);
+        .eq("id", existing.id);
     } else {
-      await supabase
-        .from('workout_days')
-        .insert({
-          plan_id: activePlan.id,
-          day_of_week: editingDay,
-          is_rest_day: dayConfig.isRestDay,
-          workout_name: dayConfig.workoutName,
-          exercises: dayConfig.exercises,
-        });
+      await supabase.from("workout_days").insert({
+        plan_id: activePlan.id,
+        day_of_week: editingDay,
+        is_rest_day: dayConfig.isRestDay,
+        workout_name: dayConfig.workoutName,
+        exercises: dayConfig.exercises,
+      });
     }
 
     await loadWorkoutDays(activePlan.id);
@@ -189,8 +209,20 @@ export default function WorkoutPlanner() {
   };
 
   const deletePlan = async (planId: string) => {
-    await supabase.from('workout_plans').delete().eq('id', planId);
+    await supabase.from("workout_plans").delete().eq("id", planId);
     await loadPlans();
+  };
+
+  const toggleDayExpanded = (dayIndex: number) => {
+    setExpandedDays((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(dayIndex)) {
+        newSet.delete(dayIndex);
+      } else {
+        newSet.add(dayIndex);
+      }
+      return newSet;
+    });
   };
 
   return (
@@ -288,7 +320,7 @@ export default function WorkoutPlanner() {
               </h3>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-800">
               {DAYS.map((day, index) => {
                 const dayData = workoutDays.find(
                   (d) => d.day_of_week === index
@@ -296,7 +328,7 @@ export default function WorkoutPlanner() {
                 return (
                   <div
                     key={index}
-                    className="bg-slate-900 rounded-lg p-4 border border-slate-700 hover:border-slate-600 transition"
+                    className="bg-slate-900 rounded-lg p-4 border border-slate-700 hover:border-slate-600 transition flex-shrink-0 w-72"
                   >
                     <div className="flex items-center justify-between mb-3">
                       <h4 className="font-semibold text-white">{day}</h4>
@@ -315,24 +347,49 @@ export default function WorkoutPlanner() {
                           <div className="text-cyan-400 font-medium mb-2">
                             {dayData.workout_name}
                           </div>
-                          <div className="space-y-1">
-                            {dayData.exercises.map((ex, i) => (
-                              <div
-                                key={i}
-                                className="flex items-center gap-1 text-slate-400 text-sm"
-                              >
-                                {ex.exercise_library_id && (
-                                  <div
-                                    className="w-1.5 h-1.5 bg-green-400 rounded-full flex-shrink-0"
-                                    title="From library"
-                                  ></div>
-                                )}
-                                <span>
-                                  {ex.name} - {ex.sets}x{ex.reps}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
+                          {expandedDays.has(index) ? (
+                            <div className="space-y-1">
+                              {dayData.exercises.map((ex, i) => (
+                                <div
+                                  key={i}
+                                  className="flex items-center gap-1 text-slate-400 text-sm"
+                                >
+                                  {ex.exercise_library_id && (
+                                    <div
+                                      className="w-1.5 h-1.5 bg-green-400 rounded-full flex-shrink-0"
+                                      title="From library"
+                                    ></div>
+                                  )}
+                                  <span>
+                                    {ex.name} - {ex.sets}x{ex.reps}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="text-slate-400 text-sm">
+                              {dayData.exercises.length} exercise
+                              {dayData.exercises.length !== 1 ? "s" : ""}
+                            </div>
+                          )}
+                          {dayData.exercises.length > 0 && (
+                            <button
+                              onClick={() => toggleDayExpanded(index)}
+                              className="w-full mt-2 flex items-center justify-center gap-1 px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded text-xs transition"
+                            >
+                              {expandedDays.has(index) ? (
+                                <>
+                                  <ChevronUp className="w-3 h-3" />
+                                  Hide
+                                </>
+                              ) : (
+                                <>
+                                  <ChevronDown className="w-3 h-3" />
+                                  Show Exercises
+                                </>
+                              )}
+                            </button>
+                          )}
                         </div>
                       )
                     ) : (
@@ -397,98 +454,138 @@ export default function WorkoutPlanner() {
                   <div className="mb-4">
                     <div className="flex items-center justify-between mb-3">
                       <label className="block text-sm font-medium text-slate-300">
-                        Exercises
+                        Exercises ({dayConfig.exercises.length})
                       </label>
-                      <button
-                        onClick={addExercise}
-                        className="flex items-center gap-1 px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded-lg transition"
-                      >
-                        <Plus className="w-4 h-4" />
-                        Add Exercise
-                      </button>
+                      <div className="flex gap-2">
+                        {dayConfig.exercises.length > 0 && (
+                          <button
+                            onClick={() =>
+                              setIsExercisesExpanded(!isExercisesExpanded)
+                            }
+                            className="flex items-center gap-1 px-3 py-1 bg-slate-700 hover:bg-slate-600 text-white text-sm rounded-lg transition"
+                          >
+                            {isExercisesExpanded ? (
+                              <>
+                                <ChevronUp className="w-4 h-4" />
+                                Hide All
+                              </>
+                            ) : (
+                              <>
+                                <ChevronDown className="w-4 h-4" />
+                                Show All
+                              </>
+                            )}
+                          </button>
+                        )}
+                        <button
+                          onClick={addExercise}
+                          className="flex items-center gap-1 px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded-lg transition"
+                        >
+                          <Plus className="w-4 h-4" />
+                          Add Exercise
+                        </button>
+                      </div>
                     </div>
 
-                    <div className="space-y-3">
-                      {dayConfig.exercises.map((exercise, i) => (
-                        <div
-                          key={i}
-                          className="bg-slate-900 p-3 rounded-lg space-y-2"
-                        >
-                          {exercise.exercise_library_id && (
-                            <div className="flex items-center gap-1 mt-1">
-                              <div className="w-1.5 h-1.5 bg-green-400 rounded-full"></div>
-                              <span className="text-xs text-green-400">
-                                From library
+                    {isExercisesExpanded ? (
+                      <div className="space-y-3">
+                        {dayConfig.exercises.map((exercise, i) => (
+                          <div
+                            key={i}
+                            className="bg-slate-900 p-3 rounded-lg space-y-2"
+                          >
+                            {exercise.exercise_library_id && (
+                              <div className="flex items-center gap-1 mt-1">
+                                <div className="w-1.5 h-1.5 bg-green-400 rounded-full"></div>
+                                <span className="text-xs text-green-400">
+                                  From library
+                                </span>
+                              </div>
+                            )}
+                            <div className="grid grid-cols-12 gap-2 items-center">
+                              <div className="col-span-6">
+                                <ExerciseAutocomplete
+                                  value={exercise.name}
+                                  onChange={(name, libraryId) =>
+                                    updateExerciseWithLibrary(
+                                      i,
+                                      name,
+                                      libraryId
+                                    )
+                                  }
+                                  placeholder="Exercise name"
+                                />
+                              </div>
+                              <input
+                                type="number"
+                                value={exercise.sets}
+                                onChange={(e) =>
+                                  updateExercise(
+                                    i,
+                                    "sets",
+                                    parseInt(e.target.value)
+                                  )
+                                }
+                                placeholder="Sets"
+                                className="col-span-2 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm"
+                              />
+                              <input
+                                type="number"
+                                value={exercise.reps}
+                                onChange={(e) =>
+                                  updateExercise(
+                                    i,
+                                    "reps",
+                                    parseInt(e.target.value)
+                                  )
+                                }
+                                placeholder="Reps"
+                                className="col-span-2 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm"
+                              />
+                              <button
+                                onClick={() => removeExercise(i)}
+                                className="col-span-2 p-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <label className="text-sm text-slate-400">
+                                Rest:
+                              </label>
+                              <input
+                                type="number"
+                                value={exercise.rest_seconds || 90}
+                                onChange={(e) =>
+                                  updateExercise(
+                                    i,
+                                    "rest_seconds",
+                                    parseInt(e.target.value)
+                                  )
+                                }
+                                placeholder="90"
+                                className="w-20 px-3 py-1 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm"
+                              />
+                              <span className="text-sm text-slate-400">
+                                seconds between sets
                               </span>
                             </div>
-                          )}
-                          <div className="grid grid-cols-12 gap-2 items-center">
-                            <div className="col-span-6">
-                              <ExerciseAutocomplete
-                                value={exercise.name}
-                                onChange={(name, libraryId) =>
-                                  updateExerciseWithLibrary(i, name, libraryId)
-                                }
-                                placeholder="Exercise name"
-                              />
-                            </div>
-                            <input
-                              type="number"
-                              value={exercise.sets}
-                              onChange={(e) =>
-                                updateExercise(
-                                  i,
-                                  "sets",
-                                  parseInt(e.target.value)
-                                )
-                              }
-                              placeholder="Sets"
-                              className="col-span-2 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm"
-                            />
-                            <input
-                              type="number"
-                              value={exercise.reps}
-                              onChange={(e) =>
-                                updateExercise(
-                                  i,
-                                  "reps",
-                                  parseInt(e.target.value)
-                                )
-                              }
-                              placeholder="Reps"
-                              className="col-span-2 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm"
-                            />
-                            <button
-                              onClick={() => removeExercise(i)}
-                              className="col-span-2 p-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <label className="text-sm text-slate-400">
-                              Rest:
-                            </label>
-                            <input
-                              type="number"
-                              value={exercise.rest_seconds || 90}
-                              onChange={(e) =>
-                                updateExercise(
-                                  i,
-                                  "rest_seconds",
-                                  parseInt(e.target.value)
-                                )
-                              }
-                              placeholder="90"
-                              className="w-20 px-3 py-1 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm"
-                            />
-                            <span className="text-sm text-slate-400">
-                              seconds between sets
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-slate-400 text-sm p-4 bg-slate-900 rounded-lg text-center">
+                        {dayConfig.exercises.length > 0 ? (
+                          <>
+                            {dayConfig.exercises.length} exercise
+                            {dayConfig.exercises.length !== 1 ? "s" : ""}{" "}
+                            configured
+                          </>
+                        ) : (
+                          "No exercises added yet"
+                        )}
+                      </div>
+                    )}
                   </div>
                 </>
               )}
