@@ -54,6 +54,7 @@ export default function DailyTracker() {
   const [exerciseLibraryMap, setExerciseLibraryMap] = useState<
     Map<string, ExerciseLibraryItem>
   >(new Map());
+  const [isWorkoutExpanded, setIsWorkoutExpanded] = useState(false);
 
   const today = new Date().toISOString().split("T")[0];
   const dayOfWeek = new Date().getDay();
@@ -327,9 +328,11 @@ export default function DailyTracker() {
     if (!user) return;
 
     const isCompleted = completedExercises.includes(exerciseName);
-    const newCompletedExercises = isCompleted
-      ? completedExercises.filter((name) => name !== exerciseName)
-      : [...completedExercises, exerciseName];
+
+    // Prevent unchecking completed exercises
+    if (isCompleted) return;
+
+    const newCompletedExercises = [...completedExercises, exerciseName];
 
     setCompletedExercises(newCompletedExercises);
 
@@ -532,7 +535,11 @@ export default function DailyTracker() {
                     <h4 className="text-cyan-400 font-medium text-lg mb-3">
                       {todayWorkout.workout_name}
                     </h4>
-                    <div className="space-y-2">
+                    <div
+                      className={`space-y-2 overflow-y-auto transition-all duration-300 ${
+                        isWorkoutExpanded ? "max-h-[600px]" : "max-h-[250px]"
+                      } pr-1`}
+                    >
                       {todayWorkout.exercises.map((exercise, i) => {
                         const isCompleted = completedExercises.includes(
                           exercise.name
@@ -541,10 +548,10 @@ export default function DailyTracker() {
                           <button
                             key={i}
                             onClick={() => toggleExercise(exercise.name)}
-                            className={`w-full bg-slate-900 p-3 rounded-lg flex items-center gap-3 transition hover:bg-slate-800 ${
+                            className={`w-full bg-slate-900 p-3 rounded-lg flex items-center gap-3 transition ${
                               isCompleted
-                                ? "border-2 border-green-500/50"
-                                : "border-2 border-transparent"
+                                ? "border-2 border-green-500/50 cursor-not-allowed"
+                                : "border-2 border-transparent hover:bg-slate-800 cursor-pointer"
                             }`}
                           >
                             {isCompleted ? (
@@ -569,6 +576,26 @@ export default function DailyTracker() {
                         );
                       })}
                     </div>
+
+                    {/* Expand/Collapse Button */}
+                    {todayWorkout.exercises.length > 3 && (
+                      <button
+                        onClick={() => setIsWorkoutExpanded(!isWorkoutExpanded)}
+                        className="w-full mt-3 flex items-center justify-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white rounded-lg transition border border-slate-700"
+                      >
+                        {isWorkoutExpanded ? (
+                          <>
+                            <ChevronUp className="w-4 h-4" />
+                            Show Less
+                          </>
+                        ) : (
+                          <>
+                            <ChevronDown className="w-4 h-4" />
+                            Expand All
+                          </>
+                        )}
+                      </button>
+                    )}
                   </div>
 
                   {/* Progress indicator */}
@@ -797,7 +824,7 @@ export default function DailyTracker() {
                 if (saveStatus === "saved") setSaveStatus("idle");
               }}
               placeholder="Write your today's notes here... (auto-saves as you type)"
-              className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-b-lg text-white placeholder-slate-500 min-h-[160px] resize-y focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
+              className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-b-lg text-white placeholder-slate-500 min-h-[160px] resize-y focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
             />
           </div>
 
