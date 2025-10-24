@@ -552,7 +552,7 @@ export default function WorkoutPlanner() {
                               </div>
                             )}
                             <div className="grid grid-cols-12 gap-2 items-center">
-                              <div className="col-span-6">
+                              <div className="col-span-10">
                                 <ExerciseAutocomplete
                                   value={exercise.name}
                                   onChange={(name, libraryId) =>
@@ -565,43 +565,59 @@ export default function WorkoutPlanner() {
                                   placeholder="Exercise name"
                                 />
                               </div>
-                              <input
-                                type="number"
-                                value={exercise.sets}
-                                onChange={(e) =>
-                                  updateExercise(
-                                    i,
-                                    "sets",
-                                    parseInt(e.target.value)
-                                  )
-                                }
-                                placeholder="Sets"
-                                className="col-span-2 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm"
-                              />
-                              <input
-                                type="number"
-                                value={exercise.reps}
-                                onChange={(e) =>
-                                  updateExercise(
-                                    i,
-                                    "reps",
-                                    parseInt(e.target.value)
-                                  )
-                                }
-                                placeholder="Reps"
-                                className="col-span-2 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm"
-                              />
                               <button
                                 onClick={() => removeExercise(i)}
-                                className="col-span-2 p-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition"
+                                className="col-span-2 p-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition items-center justify-center flex h-full"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </button>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <label className="text-sm text-slate-400">
-                                Rest:
-                              </label>
+                            <div className="grid grid-cols-12 gap-2 items-center">
+                              <div className="col-span-6">
+                                <div className="inline-flex items-center bg-slate-800 border border-slate-700 rounded-lg overflow-hidden w-full">
+                                  <span className="px-3 py-1 text-sm text-blue-400 bg-blue-500/20 border-r border-slate-600">
+                                    Sets
+                                  </span>
+                                  <input
+                                    type="number"
+                                    value={exercise.sets}
+                                    onChange={(e) =>
+                                      updateExercise(
+                                        i,
+                                        "sets",
+                                        parseInt(e.target.value)
+                                      )
+                                    }
+                                    placeholder="3"
+                                    className="flex-1 px-3 py-1 bg-transparent border-0 text-white text-sm focus:outline-none focus:ring-0"
+                                  />
+                                </div>
+                              </div>
+                              <div className="col-span-6">
+                                <div className="inline-flex items-center bg-slate-800 border border-slate-700 rounded-lg overflow-hidden w-full">
+                                  <span className="px-3 py-1 text-sm text-blue-400 bg-blue-500/20 border-r border-slate-600">
+                                    Reps
+                                  </span>
+                                  <input
+                                    type="number"
+                                    value={exercise.reps}
+                                    onChange={(e) =>
+                                      updateExercise(
+                                        i,
+                                        "reps",
+                                        parseInt(e.target.value)
+                                      )
+                                    }
+                                    placeholder="10"
+                                    className="flex-1 px-3 py-1 bg-transparent border-0 text-white text-sm focus:outline-none focus:ring-0"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                            <div className="inline-flex items-center bg-slate-800 border border-slate-700 rounded-lg overflow-hidden">
+                              <span className="px-3 py-1 text-sm text-blue-400 bg-blue-500/20 border-r border-slate-600">
+                                Rest
+                              </span>
                               <input
                                 type="number"
                                 value={exercise.rest_seconds || 90}
@@ -613,10 +629,10 @@ export default function WorkoutPlanner() {
                                   )
                                 }
                                 placeholder="90"
-                                className="w-20 px-3 py-1 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm"
+                                className="w-12 px-3 py-1 bg-transparent border-0 text-white text-sm focus:outline-none focus:ring-0"
                               />
-                              <span className="text-sm text-slate-400">
-                                seconds between sets
+                              <span className="px-3 py-1 text-sm text-slate-400 bg-slate-700/20 border-l border-slate-600">
+                                sec
                               </span>
                             </div>
                           </div>

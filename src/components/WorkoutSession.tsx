@@ -143,9 +143,8 @@ export default function WorkoutSession({
         setCurrentSet(1);
         setPhase("exercise");
       } else {
-        // All exercises complete! Reset and close to restart from beginning
-        onComplete([]); // Clear completed exercises so workout restarts fresh
-        onClose(); // Close the session dialog
+        // All exercises complete! Close the session dialog
+        onClose();
       }
     }
   };
