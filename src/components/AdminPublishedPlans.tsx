@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import toast from "react-hot-toast";
+import Swal from "sweetalert2";
 import {
   supabase,
   PublishedPlan,
@@ -123,7 +125,7 @@ export default function AdminPublishedPlans() {
       .single();
 
     if (error) {
-      alert("Failed to create plan");
+      toast.error("Failed to create plan");
       return;
     }
 
@@ -131,6 +133,7 @@ export default function AdminPublishedPlans() {
       setPlans([data, ...plans]);
       setShowCreateModal(false);
       resetNewPlanForm();
+      toast.success("Plan created successfully!");
     }
   };
 
@@ -157,7 +160,25 @@ export default function AdminPublishedPlans() {
   };
 
   const deletePlan = async (planId: string) => {
-    if (!confirm("Are you sure you want to delete this plan?")) return;
+    const result = await Swal.fire({
+      title: "Delete Plan?",
+      text: "This will permanently delete this workout plan and all its days.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#ef4444",
+      cancelButtonColor: "#64748b",
+      confirmButtonText: "Yes, delete it",
+      cancelButtonText: "Cancel",
+      background: "#1e293b",
+      color: "#fff",
+      customClass: {
+        popup: "rounded-xl border border-slate-700",
+        title: "text-xl",
+        htmlContainer: "text-slate-300",
+      },
+    });
+
+    if (!result.isConfirmed) return;
 
     const { error } = await supabase
       .from("published_plans")

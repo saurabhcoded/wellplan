@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { Toaster } from "react-hot-toast";
 import { AuthProvider } from "./contexts/AuthContext";
 import Home from "./components/Home";
 import Login from "./components/Login";
@@ -21,6 +22,51 @@ function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
+        <Toaster
+          position="top-center"
+          toastOptions={{
+            // Default options
+            duration: 3000,
+            style: {
+              background: "#1e293b",
+              color: "#fff",
+              border: "1px solid #334155",
+              padding: "16px",
+              borderRadius: "12px",
+              fontSize: "14px",
+              maxWidth: "500px",
+            },
+            // Success
+            success: {
+              duration: 3000,
+              iconTheme: {
+                primary: "#10b981",
+                secondary: "#fff",
+              },
+              style: {
+                border: "1px solid #10b981",
+              },
+            },
+            // Error
+            error: {
+              duration: 4000,
+              iconTheme: {
+                primary: "#ef4444",
+                secondary: "#fff",
+              },
+              style: {
+                border: "1px solid #ef4444",
+              },
+            },
+            // Loading
+            loading: {
+              iconTheme: {
+                primary: "#3b82f6",
+                secondary: "#fff",
+              },
+            },
+          }}
+        />
         <Routes>
           {/* Public landing and info pages */}
           <Route path="/home" element={<Home />} />

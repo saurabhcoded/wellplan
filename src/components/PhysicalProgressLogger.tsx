@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from "react";
+import toast from "react-hot-toast";
+import Swal from "sweetalert2";
 import {
   supabase,
   MediaResource,
@@ -13,7 +15,6 @@ import {
   Image as ImageIcon,
   Loader2,
   Trash2,
-  ZoomIn,
 } from "lucide-react";
 import LoadingSpinner from "./LoadingSpinner";
 
@@ -26,7 +27,7 @@ export default function PhysicalProgressLogger() {
   const [photos, setPhotos] = useState<PhotoWithUrl[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
-  const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
+  const [selectedPhoto, setSelectedPhoto] = useState<PhotoWithUrl | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -140,7 +141,7 @@ export default function PhysicalProgressLogger() {
     try {
       // Validate file
       if (!file.type.startsWith("image/")) {
-        alert("Please select an image file");
+        toast.error("Please select an image file");
         return;
       }
 
@@ -160,7 +161,7 @@ export default function PhysicalProgressLogger() {
           );
         } catch (error) {
           console.error("Compression error:", error);
-          alert(
+          toast.error(
             `Failed to compress image. Please try a smaller image (max ${MAX_FILE_SIZE_MB}MB).`
           );
           return;
@@ -219,11 +220,11 @@ export default function PhysicalProgressLogger() {
         };
 
         setPhotos([photoWithUrl, ...photos]);
-        alert("Photo uploaded successfully!");
+        toast.success("Progress photo added successfully!");
       }
     } catch (error) {
       console.error("Error uploading photo:", error);
-      alert("Failed to upload photo. Please try again.");
+      toast.error("Failed to upload photo. Please try again.");
     } finally {
       setUploading(false);
     }
@@ -241,7 +242,25 @@ export default function PhysicalProgressLogger() {
   };
 
   const deletePhoto = async (photo: MediaResource) => {
-    if (!confirm("Are you sure you want to delete this photo?")) return;
+    const result = await Swal.fire({
+      title: "Delete Photo?",
+      text: "This action cannot be undone.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#ef4444",
+      cancelButtonColor: "#64748b",
+      confirmButtonText: "Yes, delete it",
+      cancelButtonText: "Cancel",
+      background: "#1e293b",
+      color: "#fff",
+      customClass: {
+        popup: "rounded-xl border border-slate-700",
+        title: "text-xl",
+        htmlContainer: "text-slate-300",
+      },
+    });
+
+    if (!result.isConfirmed) return;
 
     try {
       // Delete from storage
@@ -264,9 +283,10 @@ export default function PhysicalProgressLogger() {
       }
 
       setPhotos(photos.filter((p) => p.id !== photo.id));
+      toast.success("Photo deleted successfully");
     } catch (error) {
       console.error("Error deleting photo:", error);
-      alert("Failed to delete photo. Please try again.");
+      toast.error("Failed to delete photo. Please try again.");
     }
   };
 
@@ -332,7 +352,8 @@ export default function PhysicalProgressLogger() {
             {photos.map((photo) => (
               <div
                 key={photo.id}
-                className="relative group flex-shrink-0 w-48 h-48 sm:w-56 sm:h-56 rounded-lg overflow-hidden bg-slate-900 border border-slate-700"
+                className="relative flex-shrink-0 w-48 h-48 sm:w-56 sm:h-56 rounded-lg overflow-hidden bg-slate-900 border border-slate-700 cursor-pointer hover:border-blue-500 transition-colors"
+                onClick={() => photo.signedUrl && setSelectedPhoto(photo)}
               >
                 {photo.signedUrl ? (
                   <img
@@ -345,24 +366,7 @@ export default function PhysicalProgressLogger() {
                     <LoadingSpinner size="sm" />
                   </div>
                 )}
-                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                  <button
-                    onClick={() =>
-                      photo.signedUrl && setSelectedPhoto(photo.signedUrl)
-                    }
-                    disabled={!photo.signedUrl}
-                    className="p-2 bg-blue-500 hover:bg-blue-600 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <ZoomIn className="w-4 h-4 text-white" />
-                  </button>
-                  <button
-                    onClick={() => deletePhoto(photo)}
-                    className="p-2 bg-red-500 hover:bg-red-600 rounded-lg transition"
-                  >
-                    <Trash2 className="w-4 h-4 text-white" />
-                  </button>
-                </div>
-                <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 to-transparent">
+                <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 to-transparent pointer-events-none">
                   <p className="text-xs text-white">
                     {new Date(photo.taken_at).toLocaleDateString()}
                   </p>
@@ -374,19 +378,33 @@ export default function PhysicalProgressLogger() {
       )}
 
       {/* Image Preview Modal */}
-      {selectedPhoto && (
+      {selectedPhoto && selectedPhoto.signedUrl && (
         <div
           className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
           onClick={() => setSelectedPhoto(null)}
         >
-          <button
-            onClick={() => setSelectedPhoto(null)}
-            className="absolute top-4 right-4 p-2 bg-slate-800 hover:bg-slate-700 rounded-lg transition"
-          >
-            <X className="w-6 h-6 text-white" />
-          </button>
+          <div className="absolute top-4 right-4 flex items-center gap-2">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                deletePhoto(selectedPhoto);
+                setSelectedPhoto(null);
+              }}
+              className="p-2 bg-red-500 hover:bg-red-600 rounded-lg transition"
+              title="Delete photo"
+            >
+              <Trash2 className="w-6 h-6 text-white" />
+            </button>
+            <button
+              onClick={() => setSelectedPhoto(null)}
+              className="p-2 bg-slate-800 hover:bg-slate-700 rounded-lg transition"
+              title="Close"
+            >
+              <X className="w-6 h-6 text-white" />
+            </button>
+          </div>
           <img
-            src={selectedPhoto}
+            src={selectedPhoto.signedUrl}
             alt="Progress photo preview"
             className="max-w-full max-h-full object-contain"
             onClick={(e) => e.stopPropagation()}

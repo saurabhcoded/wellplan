@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
-import { useAuth } from '../contexts/AuthContext';
+import toast from "react-hot-toast";
+import Swal from "sweetalert2";
+import { supabase } from "../lib/supabase";
+import { useAuth } from "../contexts/AuthContext";
 import LoadingSpinner from "./LoadingSpinner";
 import {
   Plus,
@@ -103,16 +105,39 @@ export default function ExerciseLibrary() {
       // Reset form and refresh
       resetForm();
       fetchExercises();
+      toast.success(
+        editingExercise
+          ? "Exercise updated successfully!"
+          : "Exercise created successfully!"
+      );
     } catch (error) {
       console.error("Error saving exercise:", error);
-      alert("Error saving exercise. Please try again.");
+      toast.error("Error saving exercise. Please try again.");
     }
   };
 
   const handleDelete = async (id: string) => {
     if (!isAdmin) return;
 
-    if (!confirm("Are you sure you want to delete this exercise?")) return;
+    const result = await Swal.fire({
+      title: "Delete Exercise?",
+      text: "This will permanently remove this exercise from the library.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#ef4444",
+      cancelButtonColor: "#64748b",
+      confirmButtonText: "Yes, delete it",
+      cancelButtonText: "Cancel",
+      background: "#1e293b",
+      color: "#fff",
+      customClass: {
+        popup: "rounded-xl border border-slate-700",
+        title: "text-xl",
+        htmlContainer: "text-slate-300",
+      },
+    });
+
+    if (!result.isConfirmed) return;
 
     try {
       const { error } = await supabase
@@ -122,9 +147,10 @@ export default function ExerciseLibrary() {
 
       if (error) throw error;
       fetchExercises();
+      toast.success("Exercise deleted successfully!");
     } catch (error) {
       console.error("Error deleting exercise:", error);
-      alert("Error deleting exercise. Please try again.");
+      toast.error("Error deleting exercise. Please try again.");
     }
   };
 

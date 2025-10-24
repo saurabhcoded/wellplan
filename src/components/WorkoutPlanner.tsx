@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import {
   supabase,
   WorkoutPlan,
@@ -342,7 +343,7 @@ export default function WorkoutPlanner() {
         throw daysError;
       }
 
-      alert(
+      toast.success(
         `Successfully copied "${publishedPlan.name}" to your plans! You can now activate and customize it.`
       );
 
@@ -350,7 +351,7 @@ export default function WorkoutPlanner() {
       await loadPlans();
     } catch (error) {
       console.error("Error copying plan:", error);
-      alert("Failed to copy plan. Please try again.");
+      toast.error("Failed to copy plan. Please try again.");
     } finally {
       setCopying(null);
     }

@@ -1,9 +1,6 @@
 import { useState, useEffect } from "react";
-import {
-  supabase,
-  PublishedPlan,
-  PublishedWorkoutDay,
-} from "../lib/supabase";
+import toast from "react-hot-toast";
+import { supabase, PublishedPlan, PublishedWorkoutDay } from "../lib/supabase";
 import { useAuth } from "../contexts/AuthContext";
 import {
   Copy,
@@ -134,12 +131,12 @@ export default function PublishedPlansLibrary() {
         throw daysError;
       }
 
-      alert(
+      toast.success(
         `Successfully copied "${publishedPlan.name}" to your plans! You can now activate and customize it.`
       );
     } catch (error) {
       console.error("Error copying plan:", error);
-      alert("Failed to copy plan. Please try again.");
+      toast.error("Failed to copy plan. Please try again.");
     } finally {
       setCopying(null);
     }
@@ -285,7 +282,9 @@ export default function PublishedPlansLibrary() {
                     </h4>
                     <div className="flex gap-4 overflow-x-auto pb-4">
                       {DAYS.map((day, index) => {
-                        const dayData = days.find((d) => d.day_of_week === index);
+                        const dayData = days.find(
+                          (d) => d.day_of_week === index
+                        );
                         return (
                           <div
                             key={index}
