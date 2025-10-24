@@ -11,7 +11,11 @@ import {
 import { useAuth } from "../contexts/AuthContext";
 import { Upload, X, Image as ImageIcon, Loader2, Trash2 } from "lucide-react";
 import LoadingSpinner from "./LoadingSpinner";
-import { usePhotos, useUploadPhoto, useDeletePhoto } from "../hooks/usePhysicalProgress";
+import {
+  usePhotos,
+  useUploadPhoto,
+  useDeletePhoto,
+} from "../hooks/usePhysicalProgress";
 
 interface PhotoWithUrl extends MediaResource {
   signedUrl?: string;
