@@ -85,7 +85,7 @@ export default function Layout() {
 
       {/* Bottom Navigation - Mobile */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-slate-800/95 backdrop-blur-sm border-t border-slate-700 z-40">
-        <div className="grid grid-cols-4 gap-1 px-2 py-3">
+        <div className="grid grid-cols-5 gap-1 px-2 py-3">
           <NavLink to="/app" className={mobileNavLinkClass} end>
             {({ isActive }) => (
               <>
@@ -115,6 +115,17 @@ export default function Layout() {
                   className={`w-5 h-5 ${isActive ? "text-blue-400" : ""}`}
                 />
                 <span className="text-xs">Progress</span>
+              </>
+            )}
+          </NavLink>
+
+          <NavLink to="/app/exercises" className={mobileNavLinkClass}>
+            {({ isActive }) => (
+              <>
+                <Library
+                  className={`w-5 h-5 ${isActive ? "text-blue-400" : ""}`}
+                />
+                <span className="text-xs">Library</span>
               </>
             )}
           </NavLink>

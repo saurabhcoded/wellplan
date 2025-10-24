@@ -37,6 +37,8 @@ export default function ExerciseLibrary() {
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [editingExercise, setEditingExercise] = useState<Exercise | null>(null);
+  const [showAllTags, setShowAllTags] = useState(false);
+  const [viewingExercise, setViewingExercise] = useState<Exercise | null>(null);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -239,163 +241,173 @@ export default function ExerciseLibrary() {
         )}
       </div>
 
-      {/* Exercise Form (Admin Only) */}
+      {/* Exercise Form Modal (Admin Only) */}
       {isAdmin && showForm && (
-        <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold text-white">
-              {editingExercise ? "Edit Exercise" : "Add New Exercise"}
-            </h2>
-            <button
-              onClick={resetForm}
-              className="text-slate-400 hover:text-white transition"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Exercise Name */}
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
-                Exercise Name *
-              </label>
-              <input
-                type="text"
-                required
-                value={formData.name}
-                onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
-                className="w-full px-4 py-2 bg-slate-700 text-white border border-slate-600 rounded-lg focus:outline-none focus:border-blue-500"
-                placeholder="e.g., Barbell Bench Press"
-              />
-            </div>
-
-            {/* Description */}
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
-                Description
-              </label>
-              <textarea
-                value={formData.description}
-                onChange={(e) =>
-                  setFormData({ ...formData, description: e.target.value })
-                }
-                rows={3}
-                className="w-full px-4 py-2 bg-slate-700 text-white border border-slate-600 rounded-lg focus:outline-none focus:border-blue-500"
-                placeholder="Describe the exercise, form tips, etc."
-              />
-            </div>
-
-            {/* Tags */}
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
-                Tags
-              </label>
-              <div className="flex gap-2 mb-2">
-                <input
-                  type="text"
-                  value={tagInput}
-                  onChange={(e) => setTagInput(e.target.value)}
-                  onKeyPress={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      addTag();
-                    }
-                  }}
-                  className="flex-1 px-4 py-2 bg-slate-700 text-white border border-slate-600 rounded-lg focus:outline-none focus:border-blue-500"
-                  placeholder="e.g., chest, beginner, strength"
-                />
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={resetForm}
+        >
+          <div
+            className="bg-slate-800 rounded-xl border border-slate-700 w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="sticky top-0 bg-slate-800 border-b border-slate-700 px-6 py-4 z-10">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold text-white">
+                  {editingExercise ? "Edit Exercise" : "Add New Exercise"}
+                </h2>
                 <button
-                  type="button"
-                  onClick={addTag}
-                  className="px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-500 transition"
+                  onClick={resetForm}
+                  className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
                 >
-                  Add
+                  <X className="w-5 h-5" />
                 </button>
               </div>
-              <div className="flex flex-wrap gap-2">
-                {formData.tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="flex items-center gap-1 px-3 py-1 bg-blue-500/20 text-blue-400 rounded-full text-sm"
-                  >
-                    {tag}
-                    <button
-                      type="button"
-                      onClick={() => removeTag(tag)}
-                      className="hover:text-blue-300"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </span>
-                ))}
-              </div>
             </div>
 
-            {/* Media Type */}
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
-                Media Type
-              </label>
-              <div className="grid grid-cols-3 gap-3">
-                {(["image", "gif", "youtube"] as const).map((type) => (
+            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+              {/* Exercise Name */}
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Exercise Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.name}
+                  onChange={(e) =>
+                    setFormData({ ...formData, name: e.target.value })
+                  }
+                  className="w-full px-4 py-2 bg-slate-700 text-white border border-slate-600 rounded-lg focus:outline-none focus:border-blue-500"
+                  placeholder="e.g., Barbell Bench Press"
+                />
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Description
+                </label>
+                <textarea
+                  value={formData.description}
+                  onChange={(e) =>
+                    setFormData({ ...formData, description: e.target.value })
+                  }
+                  rows={3}
+                  className="w-full px-4 py-2 bg-slate-700 text-white border border-slate-600 rounded-lg focus:outline-none focus:border-blue-500"
+                  placeholder="Describe the exercise, form tips, etc."
+                />
+              </div>
+
+              {/* Tags */}
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Tags
+                </label>
+                <div className="flex gap-2 mb-2">
+                  <input
+                    type="text"
+                    value={tagInput}
+                    onChange={(e) => setTagInput(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        addTag();
+                      }
+                    }}
+                    className="flex-1 px-4 py-2 bg-slate-700 text-white border border-slate-600 rounded-lg focus:outline-none focus:border-blue-500"
+                    placeholder="e.g., chest, beginner, strength"
+                  />
                   <button
-                    key={type}
                     type="button"
-                    onClick={() =>
-                      setFormData({ ...formData, media_type: type })
-                    }
-                    className={`flex items-center justify-center gap-2 px-4 py-3 rounded-lg border transition ${
-                      formData.media_type === type
-                        ? "bg-blue-500 border-blue-500 text-white"
-                        : "bg-slate-700 border-slate-600 text-slate-300 hover:border-slate-500"
-                    }`}
+                    onClick={addTag}
+                    className="px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-500 transition"
                   >
-                    {type === "image" && <Image className="w-4 h-4" />}
-                    {type === "gif" && <FileImage className="w-4 h-4" />}
-                    {type === "youtube" && <Video className="w-4 h-4" />}
-                    <span className="capitalize">{type}</span>
+                    Add
                   </button>
-                ))}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {formData.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="flex items-center gap-1 px-3 py-1 bg-blue-500/20 text-blue-400 rounded-full text-sm"
+                    >
+                      {tag}
+                      <button
+                        type="button"
+                        onClick={() => removeTag(tag)}
+                        className="hover:text-blue-300"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
               </div>
-            </div>
 
-            {/* Media URL */}
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
-                Media URL
-              </label>
-              <input
-                type="url"
-                value={formData.media_url}
-                onChange={(e) =>
-                  setFormData({ ...formData, media_url: e.target.value })
-                }
-                className="w-full px-4 py-2 bg-slate-700 text-white border border-slate-600 rounded-lg focus:outline-none focus:border-blue-500"
-                placeholder="https://..."
-              />
-            </div>
+              {/* Media Type */}
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Media Type
+                </label>
+                <div className="grid grid-cols-3 gap-3">
+                  {(["image", "gif", "youtube"] as const).map((type) => (
+                    <button
+                      key={type}
+                      type="button"
+                      onClick={() =>
+                        setFormData({ ...formData, media_type: type })
+                      }
+                      className={`flex items-center justify-center gap-2 px-4 py-3 rounded-lg border transition ${
+                        formData.media_type === type
+                          ? "bg-blue-500 border-blue-500 text-white"
+                          : "bg-slate-700 border-slate-600 text-slate-300 hover:border-slate-500"
+                      }`}
+                    >
+                      {type === "image" && <Image className="w-4 h-4" />}
+                      {type === "gif" && <FileImage className="w-4 h-4" />}
+                      {type === "youtube" && <Video className="w-4 h-4" />}
+                      <span className="capitalize">{type}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-            {/* Submit Button */}
-            <div className="flex gap-3 pt-4">
-              <button
-                type="submit"
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition"
-              >
-                <Save className="w-5 h-5" />
-                {editingExercise ? "Update Exercise" : "Create Exercise"}
-              </button>
-              <button
-                type="button"
-                onClick={resetForm}
-                className="px-4 py-2 bg-slate-700 text-slate-300 rounded-lg hover:bg-slate-600 transition"
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
+              {/* Media URL */}
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Media URL
+                </label>
+                <input
+                  type="url"
+                  value={formData.media_url}
+                  onChange={(e) =>
+                    setFormData({ ...formData, media_url: e.target.value })
+                  }
+                  className="w-full px-4 py-2 bg-slate-700 text-white border border-slate-600 rounded-lg focus:outline-none focus:border-blue-500"
+                  placeholder="https://..."
+                />
+              </div>
+
+              {/* Submit Button */}
+              <div className="flex flex-col sm:flex-row gap-3 pt-4">
+                <button
+                  type="submit"
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition"
+                >
+                  <Save className="w-5 h-5" />
+                  {editingExercise ? "Update Exercise" : "Create Exercise"}
+                </button>
+                <button
+                  type="button"
+                  onClick={resetForm}
+                  className="px-4 py-3 bg-slate-700 text-slate-300 rounded-lg hover:bg-slate-600 transition"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 
@@ -415,37 +427,47 @@ export default function ExerciseLibrary() {
 
         {/* Tag Filter */}
         {allTags.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => setSelectedTag(null)}
-              className={`px-3 py-1 rounded-full text-sm transition ${
-                !selectedTag
-                  ? "bg-blue-500 text-white"
-                  : "bg-slate-700 text-slate-300 hover:bg-slate-600"
-              }`}
-            >
-              All
-            </button>
-            {allTags.map((tag) => (
+          <div>
+            <div className="flex flex-wrap gap-2">
               <button
-                key={tag}
-                onClick={() => setSelectedTag(tag)}
-                className={`flex items-center gap-1 px-3 py-1 rounded-full text-sm transition ${
-                  selectedTag === tag
+                onClick={() => setSelectedTag(null)}
+                className={`px-3 py-1 rounded-full text-sm transition ${
+                  !selectedTag
                     ? "bg-blue-500 text-white"
                     : "bg-slate-700 text-slate-300 hover:bg-slate-600"
                 }`}
               >
-                <Tag className="w-3 h-3" />
-                {tag}
+                All
               </button>
-            ))}
+              {(showAllTags ? allTags : allTags.slice(0, 5)).map((tag) => (
+                <button
+                  key={tag}
+                  onClick={() => setSelectedTag(tag)}
+                  className={`flex items-center gap-1 px-3 py-1 rounded-full text-sm transition ${
+                    selectedTag === tag
+                      ? "bg-blue-500 text-white"
+                      : "bg-slate-700 text-slate-300 hover:bg-slate-600"
+                  }`}
+                >
+                  <Tag className="w-3 h-3" />
+                  {tag}
+                </button>
+              ))}
+              {allTags.length > 5 && (
+                <button
+                  onClick={() => setShowAllTags(!showAllTags)}
+                  className="px-3 py-1 rounded-full text-sm bg-slate-700 text-slate-300 hover:bg-slate-600 transition"
+                >
+                  {showAllTags ? "Show Less" : `+${allTags.length - 5} More`}
+                </button>
+              )}
+            </div>
           </div>
         )}
       </div>
 
       {/* Exercise List */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
         {filteredExercises.length === 0 ? (
           <div className="col-span-full text-center py-12 text-slate-400">
             {exercises.length === 0
@@ -456,13 +478,14 @@ export default function ExerciseLibrary() {
           filteredExercises.map((exercise) => (
             <div
               key={exercise.id}
-              className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden hover:border-slate-600 transition"
+              className="bg-slate-800 rounded-lg sm:rounded-xl border border-slate-700 overflow-hidden hover:border-blue-500 transition cursor-pointer"
+              onClick={() => setViewingExercise(exercise)}
             >
               {/* Media Preview */}
               {exercise.media_url && (
                 <div className="aspect-video bg-slate-900 flex items-center justify-center">
                   {exercise.media_type === "youtube" ? (
-                    <Video className="w-12 h-12 text-slate-600" />
+                    <Video className="w-8 h-8 sm:w-12 sm:h-12 text-slate-600" />
                   ) : (
                     <img
                       src={exercise.media_url}
@@ -476,45 +499,56 @@ export default function ExerciseLibrary() {
                 </div>
               )}
 
-              <div className="p-4">
-                <h3 className="text-lg font-semibold text-white mb-2">
+              <div className="p-2 sm:p-4">
+                <h3 className="text-sm sm:text-lg font-semibold text-white mb-1 sm:mb-2 line-clamp-2">
                   {exercise.name}
                 </h3>
 
                 {exercise.description && (
-                  <p className="text-sm text-slate-400 mb-3 line-clamp-2">
+                  <p className="hidden sm:block text-sm text-slate-400 mb-3 line-clamp-2 lg:line-clamp-3">
                     {exercise.description}
                   </p>
                 )}
 
                 {exercise.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mb-3">
-                    {exercise.tags.map((tag) => (
+                  <div className="flex flex-wrap gap-1 mb-2 sm:mb-3">
+                    {exercise.tags.slice(0, 2).map((tag) => (
                       <span
                         key={tag}
-                        className="px-2 py-0.5 bg-blue-500/20 text-blue-400 rounded text-xs"
+                        className="px-1.5 sm:px-2 py-0.5 bg-blue-500/20 text-blue-400 rounded text-[10px] sm:text-xs"
                       >
                         {tag}
                       </span>
                     ))}
+                    {exercise.tags.length > 2 && (
+                      <span className="px-1.5 sm:px-2 py-0.5 bg-slate-700 text-slate-400 rounded text-[10px] sm:text-xs">
+                        +{exercise.tags.length - 2}
+                      </span>
+                    )}
                   </div>
                 )}
 
                 {isAdmin && (
-                  <div className="flex gap-2 pt-3 border-t border-slate-700">
+                  <div className="flex gap-1 sm:gap-2 pt-2 sm:pt-3 border-t border-slate-700">
                     <button
-                      onClick={() => handleEdit(exercise)}
-                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-slate-700 text-slate-300 rounded-lg hover:bg-slate-600 transition text-sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEdit(exercise);
+                      }}
+                      className="flex-1 flex items-center justify-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 bg-slate-700 text-slate-300 rounded-lg hover:bg-slate-600 transition text-xs sm:text-sm"
                     >
-                      <Edit2 className="w-4 h-4" />
-                      Edit
+                      <Edit2 className="w-3 h-3 sm:w-4 sm:h-4" />
+                      <span className="hidden sm:inline">Edit</span>
                     </button>
                     <button
-                      onClick={() => handleDelete(exercise.id)}
-                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-red-500/10 text-red-400 rounded-lg hover:bg-red-500/20 transition text-sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(exercise.id);
+                      }}
+                      className="flex-1 flex items-center justify-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 bg-red-500/10 text-red-400 rounded-lg hover:bg-red-500/20 transition text-xs sm:text-sm"
                     >
-                      <Trash2 className="w-4 h-4" />
-                      Delete
+                      <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
+                      <span className="hidden sm:inline">Delete</span>
                     </button>
                   </div>
                 )}
@@ -523,6 +557,157 @@ export default function ExerciseLibrary() {
           ))
         )}
       </div>
+
+      {/* View Exercise Modal */}
+      {viewingExercise && (
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={() => setViewingExercise(null)}
+        >
+          <div
+            className="bg-slate-800 rounded-xl border border-slate-700 w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="sticky top-0 bg-slate-800 border-b border-slate-700 px-6 py-4 z-10">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-white">
+                  {viewingExercise.name}
+                </h2>
+                <button
+                  onClick={() => setViewingExercise(null)}
+                  className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 space-y-6">
+              {/* Media */}
+              {viewingExercise.media_url && (
+                <div className="rounded-lg overflow-hidden bg-slate-900">
+                  {viewingExercise.media_type === "youtube" ? (
+                    <div className="aspect-video">
+                      <iframe
+                        src={`https://www.youtube.com/embed/${
+                          viewingExercise.media_url.includes("youtu.be")
+                            ? viewingExercise.media_url.split("/").pop()
+                            : viewingExercise.media_url
+                                .split("v=")[1]
+                                ?.split("&")[0]
+                        }`}
+                        title={viewingExercise.name}
+                        className="w-full h-full"
+                        allowFullScreen
+                      />
+                    </div>
+                  ) : (
+                    <img
+                      src={viewingExercise.media_url}
+                      alt={viewingExercise.name}
+                      className="w-full h-auto"
+                      onError={(e) => {
+                        e.currentTarget.src = "";
+                        e.currentTarget.alt = "Failed to load image";
+                      }}
+                    />
+                  )}
+                </div>
+              )}
+
+              {/* Description */}
+              {viewingExercise.description && (
+                <div>
+                  <h3 className="text-lg font-semibold text-white mb-2">
+                    Description
+                  </h3>
+                  <p className="text-slate-300 leading-relaxed whitespace-pre-wrap">
+                    {viewingExercise.description}
+                  </p>
+                </div>
+              )}
+
+              {/* Tags */}
+              {viewingExercise.tags.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-white mb-2">
+                    Tags
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {viewingExercise.tags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="flex items-center gap-1 px-3 py-1 bg-blue-500/20 text-blue-400 rounded-full text-sm"
+                      >
+                        <Tag className="w-3 h-3" />
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Media Info */}
+              {viewingExercise.media_url && (
+                <div>
+                  <h3 className="text-lg font-semibold text-white mb-2">
+                    Media Type
+                  </h3>
+                  <div className="flex items-center gap-2 text-slate-300">
+                    {viewingExercise.media_type === "image" && (
+                      <>
+                        <Image className="w-4 h-4" />
+                        <span>Image</span>
+                      </>
+                    )}
+                    {viewingExercise.media_type === "gif" && (
+                      <>
+                        <FileImage className="w-4 h-4" />
+                        <span>GIF</span>
+                      </>
+                    )}
+                    {viewingExercise.media_type === "youtube" && (
+                      <>
+                        <Video className="w-4 h-4" />
+                        <span>YouTube Video</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Admin Actions */}
+              {isAdmin && (
+                <div className="flex gap-3 pt-4 border-t border-slate-700">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setViewingExercise(null);
+                      handleEdit(viewingExercise);
+                    }}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition"
+                  >
+                    <Edit2 className="w-5 h-5" />
+                    Edit Exercise
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setViewingExercise(null);
+                      handleDelete(viewingExercise.id);
+                    }}
+                    className="px-4 py-3 bg-red-500/10 text-red-400 rounded-lg hover:bg-red-500/20 transition"
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
